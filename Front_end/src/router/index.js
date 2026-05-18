@@ -32,6 +32,12 @@ const routes = [
         redirect: '/dashboard',
       },
       {
+        path: 'overview',
+        name: 'Overview',
+        component: () => import('../views/Overview.vue'),
+        meta: { title: '总览' },
+      },
+      {
         path: 'messages',
         name: 'Messages',
         component: () => import('../views/Messages.vue'),

@@ -173,10 +173,6 @@ function isActive(tab) {
 }
 
 function onTabClick(tab) {
-  if (tab.key === 'overview') {
-    toast.info('总览页面开发中')
-    return
-  }
   if (route.path !== tab.path) {
     router.push(tab.path)
   }
