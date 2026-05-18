@@ -94,11 +94,18 @@ def list_assets(
     status: Optional[str] = Query(None, description="按状态过滤"),
     category: Optional[str] = Query(None, description="按分类过滤"),
     asset_class: Optional[str] = Query(None, description="按资产大类过滤，如 IT"),
+    location: Optional[str] = Query(None, description="按存放位置模糊搜索"),
+    owner: Optional[str] = Query(None, description="按使用人模糊搜索"),
+    department: Optional[str] = Query(None, description="按部门模糊搜索"),
+    supplier: Optional[str] = Query(None, description="按供应商模糊搜索"),
+    brand: Optional[str] = Query(None, description="按品牌模糊搜索"),
     db: Session = Depends(get_db),
 ):
     total, items = crud.list_assets(
         db, page=page, page_size=page_size, keyword=keyword,
         status=status, category=category, asset_class=asset_class,
+        location=location, owner=owner, department=department,
+        supplier=supplier, brand=brand,
     )
     return {"total": total, "items": items}
 

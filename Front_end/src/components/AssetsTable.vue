@@ -603,6 +603,11 @@ const query = reactive({
   status: '',
   category: '',
   asset_class: '',
+  location: '',
+  owner: '',
+  department: '',
+  supplier: '',
+  brand: '',
 })
 
 const keywordLabel = computed(() => Array.from('AI Search'))
@@ -650,6 +655,11 @@ async function onSearch() {
     query.status = p.status || ''
     query.category = p.category || ''
     query.asset_class = p.asset_class || ''
+    query.brand = p.brand || ''
+    query.location = p.location || ''
+    query.owner = p.owner || ''
+    query.department = p.department || ''
+    query.supplier = p.supplier || ''
     query.page = 1
     await loadList()
   } catch {
@@ -665,6 +675,11 @@ function onReset() {
   query.status = ''
   query.category = ''
   query.asset_class = ''
+  query.brand = ''
+  query.location = ''
+  query.owner = ''
+  query.department = ''
+  query.supplier = ''
   query.page = 1
   loadList()
 }

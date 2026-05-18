@@ -183,10 +183,15 @@ Excel 表头：
 # ---------- AI 搜索：自然语言 → 结构化查询参数 ----------
 
 ASSET_SEARCH_FIELDS = {
-    "keyword": "模糊搜索关键词（匹配编号/品牌/型号/SN/使用人）",
+    "keyword": "模糊搜索关键词（匹配编号/型号/SN）",
     "status": "状态筛选，只能是：在用/闲置/维修/报废",
     "category": "分类筛选（如 笔记本电脑、显示器）",
     "asset_class": "资产大类代码筛选（IT/OF/VH/ME/IN/OT）",
+    "brand": "品牌筛选（如 苹果、联想、Dell、华为）",
+    "location": "存放位置筛选（如 办公室A、机房、3楼）",
+    "owner": "使用人/责任人筛选",
+    "department": "所属部门筛选（如 技术部、行政部）",
+    "supplier": "供应商/采购渠道筛选",
 }
 
 LOG_SEARCH_FIELDS = {

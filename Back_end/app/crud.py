@@ -24,6 +24,11 @@ def list_assets(
     status: Optional[str] = None,
     category: Optional[str] = None,
     asset_class: Optional[str] = None,
+    location: Optional[str] = None,
+    owner: Optional[str] = None,
+    department: Optional[str] = None,
+    supplier: Optional[str] = None,
+    brand: Optional[str] = None,
 ) -> Tuple[int, list[models.Asset]]:
     stmt = select(models.Asset)
     if keyword:
@@ -43,6 +48,16 @@ def list_assets(
         stmt = stmt.where(models.Asset.category == category)
     if asset_class:
         stmt = stmt.where(models.Asset.asset_class == asset_class.upper())
+    if location:
+        stmt = stmt.where(models.Asset.location.like(f"%{location}%"))
+    if owner:
+        stmt = stmt.where(models.Asset.owner.like(f"%{owner}%"))
+    if department:
+        stmt = stmt.where(models.Asset.department.like(f"%{department}%"))
+    if supplier:
+        stmt = stmt.where(models.Asset.supplier.like(f"%{supplier}%"))
+    if brand:
+        stmt = stmt.where(models.Asset.brand.like(f"%{brand}%"))
 
     total = len(db.execute(stmt).scalars().all())
     stmt = (
