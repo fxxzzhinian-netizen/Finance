@@ -34,14 +34,16 @@
           </el-tooltip>
         </div>
 
-        <!-- 右侧：关键词输入框 + 查询 + 重置 -->
+        <!-- 右侧：AI 搜索输入框 + 查询 + 重置 -->
         <div class="actions-right">
-          <div class="form-control" :class="{ 'is-filled': !!query.keyword }">
+          <div class="form-control ai-search-control" :class="{ 'is-filled': !!query.keyword, 'is-loading': aiSearching }">
             <input
               type="text"
               required
               v-model="query.keyword"
+              :disabled="aiSearching"
               @keyup.enter="onSearch"
+              placeholder=""
             />
             <label aria-hidden="true">
               <span
@@ -50,14 +52,17 @@
                 :style="{ transitionDelay: `${i * 50}ms` }"
               >{{ ch }}</span>
             </label>
+            <span v-if="aiSearching" class="ai-search-spinner" aria-hidden="true"></span>
           </div>
 
-          <el-tooltip content="查询" placement="top">
+          <el-tooltip :content="aiSearching ? 'AI 解析中…' : 'AI 搜索'" placement="top">
             <button
               type="button"
               class="svg-icon-btn search-btn"
+              :class="{ 'is-ai-loading': aiSearching }"
+              :disabled="aiSearching"
               @click="onSearch"
-              aria-label="查询"
+              aria-label="AI 搜索"
             >
               <svg viewBox="0 0 1024 1024" width="21" height="21" aria-hidden="true">
                 <path d="M469.333333 0c259.2 0 469.333333 210.133333 469.333334 469.333333 0 114.218667-40.832 218.922667-108.629334 300.330667l161.664 161.706667a42.666667 42.666667 0 1 1-60.373333 60.330666l-161.706667-161.706666A467.413333 467.413333 0 0 1 469.333333 938.666667c-259.2 0-469.333333-210.133333-469.333333-469.333334s210.133333-469.333333 469.333333-469.333333z m0 85.333333a384 384 0 1 0 0 768 384 384 0 0 0 0-768z"/>
@@ -71,6 +76,7 @@
             <button
               type="button"
               class="svg-icon-btn reset-btn"
+              :disabled="aiSearching"
               @click="onReset"
               aria-label="重置"
             >
@@ -579,6 +585,7 @@ import {
   uploadAssetFile,
   deleteAssetFile,
 } from '../api/assets'
+import { aiParseSearch } from '../api/ai'
 import AssetQrDialog from './AssetQrDialog.vue'
 import AssetImportDialog from './AssetImportDialog.vue'
 const emit = defineEmits(['change'])
@@ -587,6 +594,7 @@ const list = ref([])
 const total = ref(0)
 const loading = ref(false)
 const assetClasses = ref([])
+const aiSearching = ref(false)
 
 const query = reactive({
   page: 1,
@@ -597,7 +605,7 @@ const query = reactive({
   asset_class: '',
 })
 
-const keywordLabel = computed(() => Array.from('Keyword'))
+const keywordLabel = computed(() => Array.from('AI Search'))
 
 function fmtDate(v) {
   if (!v) return '—'
@@ -627,9 +635,29 @@ async function loadList() {
   }
 }
 
-function onSearch() {
-  query.page = 1
-  loadList()
+async function onSearch() {
+  const text = query.keyword?.trim()
+  if (!text) {
+    query.page = 1
+    loadList()
+    return
+  }
+  aiSearching.value = true
+  try {
+    const res = await aiParseSearch(text, 'assets')
+    const p = res.params || {}
+    query.keyword = p.keyword || ''
+    query.status = p.status || ''
+    query.category = p.category || ''
+    query.asset_class = p.asset_class || ''
+    query.page = 1
+    await loadList()
+  } catch {
+    query.page = 1
+    loadList()
+  } finally {
+    aiSearching.value = false
+  }
 }
 
 function onReset() {
@@ -1225,6 +1253,33 @@ onMounted(() => {
   transform: translateY(-18px);
   font-size: 11px;
   font-weight: 600;
+}
+
+/* ===================== AI 搜索加载状态 ===================== */
+.ai-search-control {
+  position: relative;
+}
+.ai-search-control.is-loading input {
+  opacity: 0.5;
+  pointer-events: none;
+}
+.ai-search-spinner {
+  position: absolute;
+  right: 2px;
+  bottom: 10px;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(var(--theme-primary-rgb), 0.25);
+  border-top-color: var(--theme-primary, #c5a47e);
+  border-radius: 50%;
+  animation: ai-spin 0.7s linear infinite;
+}
+@keyframes ai-spin {
+  to { transform: rotate(360deg); }
+}
+.search-btn.is-ai-loading {
+  opacity: 0.5;
+  pointer-events: none;
 }
 
 /* ===================== 金色表头表格 ===================== */

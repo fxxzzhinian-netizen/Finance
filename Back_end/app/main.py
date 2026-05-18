@@ -8,7 +8,7 @@ from sqlalchemy.exc import OperationalError
 
 from .config import get_settings
 from .database import Base, SessionLocal, engine
-from .routers import assets, auth, logs, public
+from .routers import ai, assets, auth, logs, public
 from . import models
 from .security import hash_password
 
@@ -188,3 +188,4 @@ app.include_router(auth.router)
 app.include_router(assets.router)
 app.include_router(logs.router)
 app.include_router(public.router)
+app.include_router(ai.router)

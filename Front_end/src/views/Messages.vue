@@ -48,12 +48,13 @@
       </div>
 
       <div class="toolbar-right">
-        <div class="form-control" :class="{ 'is-filled': !!keyword }">
+        <div class="form-control ai-search-control" :class="{ 'is-filled': !!keyword, 'is-loading': aiSearching }">
           <input
             type="text"
             required
             v-model="keyword"
-            @keyup.enter="reload(true)"
+            :disabled="aiSearching"
+            @keyup.enter="onAiSearch"
           />
           <label aria-hidden="true">
             <span
@@ -62,13 +63,16 @@
               :style="{ transitionDelay: `${i * 50}ms` }"
             >{{ ch }}</span>
           </label>
+          <span v-if="aiSearching" class="ai-search-spinner" aria-hidden="true"></span>
         </div>
-        <el-tooltip content="查询" placement="top">
+        <el-tooltip :content="aiSearching ? 'AI 解析中…' : 'AI 搜索'" placement="top">
           <button
             type="button"
             class="svg-icon-btn search-btn"
-            @click="reload(true)"
-            aria-label="查询"
+            :class="{ 'is-ai-loading': aiSearching }"
+            :disabled="aiSearching"
+            @click="onAiSearch"
+            aria-label="AI 搜索"
           >
             <svg viewBox="0 0 1024 1024" width="21" height="21" aria-hidden="true">
               <path d="M469.333333 0c259.2 0 469.333333 210.133333 469.333334 469.333333 0 114.218667-40.832 218.922667-108.629334 300.330667l161.664 161.706667a42.666667 42.666667 0 1 1-60.373333 60.330666l-161.706667-161.706666A467.413333 467.413333 0 0 1 469.333333 938.666667c-259.2 0-469.333333-210.133333-469.333333-469.333334s210.133333-469.333333 469.333333-469.333333z m0 85.333333a384 384 0 1 0 0 768 384 384 0 0 0 0-768z"/>
@@ -270,6 +274,7 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { listLogs, markLogsRead } from '../api/logs'
+import { aiParseSearch } from '../api/ai'
 import { toast } from '../utils/toast'
 
 import imgAssetCreate from '../img/新增资产.png'
@@ -301,7 +306,8 @@ function actionImage(a) {
 const scope = ref('all')
 const actionFilter = ref('')
 const keyword = ref('')
-const keywordLabel = computed(() => Array.from('Keyword'))
+const keywordLabel = computed(() => Array.from('AI Search'))
+const aiSearching = ref(false)
 const page = ref(1)
 const pageSize = ref(20)
 const total = ref(0)
@@ -548,6 +554,28 @@ function onActionChange(v) {
 function clearKeyword() {
   keyword.value = ''
   reload(true)
+}
+
+async function onAiSearch() {
+  const text = keyword.value?.trim()
+  if (!text) {
+    reload(true)
+    return
+  }
+  aiSearching.value = true
+  try {
+    const res = await aiParseSearch(text, 'logs')
+    const p = res.params || {}
+    keyword.value = p.keyword || ''
+    if (p.action) actionFilter.value = p.action
+    if (p.scope) scope.value = p.scope
+    page.value = 1
+    await reload(false)
+  } catch {
+    reload(true)
+  } finally {
+    aiSearching.value = false
+  }
 }
 
 function onReset() {
@@ -838,6 +866,33 @@ watch(scope, () => {
   transform: translateY(-18px);
   font-size: 11px;
   font-weight: 600;
+}
+
+/* ===================== AI 搜索加载状态 ===================== */
+.ai-search-control {
+  position: relative;
+}
+.ai-search-control.is-loading input {
+  opacity: 0.5;
+  pointer-events: none;
+}
+.ai-search-spinner {
+  position: absolute;
+  right: 2px;
+  bottom: 10px;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(var(--theme-primary-rgb), 0.25);
+  border-top-color: var(--theme-primary, #c5a47e);
+  border-radius: 50%;
+  animation: ai-spin 0.7s linear infinite;
+}
+@keyframes ai-spin {
+  to { transform: rotate(360deg); }
+}
+.search-btn.is-ai-loading {
+  opacity: 0.5;
+  pointer-events: none;
 }
 
 /* "全部已读" 改为文字按钮（无边框） */

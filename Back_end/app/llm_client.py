@@ -180,6 +180,84 @@ Excel 表头：
     return result
 
 
+# ---------- AI 搜索：自然语言 → 结构化查询参数 ----------
+
+ASSET_SEARCH_FIELDS = {
+    "keyword": "模糊搜索关键词（匹配编号/品牌/型号/SN/使用人）",
+    "status": "状态筛选，只能是：在用/闲置/维修/报废",
+    "category": "分类筛选（如 笔记本电脑、显示器）",
+    "asset_class": "资产大类代码筛选（IT/OF/VH/ME/IN/OT）",
+}
+
+LOG_SEARCH_FIELDS = {
+    "keyword": "模糊搜索关键词（匹配摘要/对象/操作人）",
+    "action": "动作类型筛选，只能是：asset.create/asset.update/asset.delete/asset.import/asset.qr.regen/file.upload/file.delete/login/logout",
+    "scope": "范围，只能是：all（全部）或 mine（仅我的）",
+}
+
+
+def parse_search_query(
+    text: str,
+    target: str = "assets",
+) -> Dict[str, Any]:
+    """将用户自然语言搜索文本解析为结构化查询参数。
+
+    参数：
+        text：用户输入的自然语言，如"找苹果品牌的笔记本"
+        target：搜索目标，"assets" 或 "logs"
+
+    返回：
+        dict，键为搜索字段 key，值为解析出来的值；无法识别的字段不包含在内。
+    """
+    if target == "logs":
+        fields = LOG_SEARCH_FIELDS
+        target_desc = "系统操作日志"
+    else:
+        fields = ASSET_SEARCH_FIELDS
+        target_desc = "企业资产表"
+
+    fields_text = json.dumps(fields, ensure_ascii=False, indent=2)
+
+    system_prompt = (
+        f"你是{target_desc}的智能搜索助手。"
+        "用户会用自然语言描述想搜索的内容，你需要把它解析成结构化的查询参数。"
+        "严格按给定字段输出 JSON，不要输出任何解释或 Markdown。"
+        "如果用户的描述无法映射到任何字段，返回空对象 {}。"
+        "只返回能确定的字段，不确定的不要猜测。"
+    )
+
+    user_prompt = f"""可用的搜索字段（key 为参数名，value 为说明）：
+{fields_text}
+
+用户搜索文本：
+{text}
+
+请输出 JSON 对象，键为上面的字段 key，值为从用户文本中提取的搜索值。
+不要输出任何解释，只输出 JSON 对象本身。"""
+
+    content = _chat_completion(
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        response_format={"type": "json_object"},
+        temperature=0.0,
+        timeout=15.0,
+    )
+
+    try:
+        raw = json.loads(content)
+    except json.JSONDecodeError as e:
+        logger.warning("AI 搜索解析返回非 JSON：%s; content=%r", e, content[:300])
+        raise LLMUnavailable(f"返回内容不是合法 JSON：{e}") from e
+
+    if not isinstance(raw, dict):
+        raise LLMUnavailable("返回 JSON 顶层不是对象")
+
+    allowed = set(fields.keys())
+    return {k: v for k, v in raw.items() if k in allowed and v is not None and v != ""}
+
+
 # 可被 LLM 补全的字段（asset_code 由系统生成，不允许覆盖）
 _FILLABLE_FIELDS = [k for k in SYSTEM_FIELD_DICT.keys() if k != "asset_code"]
 
