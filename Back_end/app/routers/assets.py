@@ -620,6 +620,8 @@ def _import_commit_impl(
 
     success_codes: List[str] = []
     failures: List[dict] = []
+    daily_counts: dict[str, int] = {}
+    undated_success = 0
     for idx, item in enumerate(rows):
         # 批量导入时强制忽略 Excel 中的资产编号，统一由平台按
         # 「机构-大类-年份-流水」规则自动生成，避免外部编号与系统冲突 / 重复。
@@ -627,6 +629,11 @@ def _import_commit_impl(
         try:
             asset = crud.create_asset(db, item)
             success_codes.append(asset.asset_code)
+            if asset.purchase_date:
+                key = asset.purchase_date.date().isoformat()
+                daily_counts[key] = daily_counts.get(key, 0) + 1
+            else:
+                undated_success += 1
         except HTTPException as e:
             failures.append(
                 {
@@ -659,6 +666,8 @@ def _import_commit_impl(
             "success": success,
             "failed": failed,
             "success_codes": success_codes[:50],
+            "daily_counts": daily_counts,
+            "undated_success": undated_success,
             "failures": failures[:50],
         },
         request=request,

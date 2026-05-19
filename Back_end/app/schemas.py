@@ -171,6 +171,7 @@ class ActivityLogOut(BaseModel):
     target_label: Optional[str] = None
     summary: str
     changes: List[FieldChange] = Field(default_factory=list)
+    extra: Dict[str, Any] = Field(default_factory=dict)
     ip: Optional[str] = None
     is_read: bool = False
     created_at: datetime

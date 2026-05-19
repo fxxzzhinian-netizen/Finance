@@ -161,12 +161,15 @@ def _serialize(
     read_ids: Optional[set[int]] = None,
 ) -> dict[str, Any]:
     changes: list[dict[str, Any]] = []
+    extra: dict[str, Any] = {}
     if log_row.detail:
         try:
             payload = json.loads(log_row.detail)
             changes = payload.get("changes") or []
+            extra = payload.get("extra") or {}
         except (ValueError, TypeError):
             changes = []
+            extra = {}
     is_read = log_row.is_read
     if read_ids is not None:
         is_read = log_row.id in read_ids
@@ -180,6 +183,7 @@ def _serialize(
         "target_label": log_row.target_label,
         "summary": log_row.summary,
         "changes": changes,
+        "extra": extra,
         "ip": log_row.ip,
         "is_read": is_read,
         "created_at": log_row.created_at,

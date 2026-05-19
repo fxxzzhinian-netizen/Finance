@@ -233,9 +233,11 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { listAssets } from '../api/assets'
+import { listLogs } from '../api/logs'
 import { getStoredTheme } from '../utils/theme'
 
 const PAGE_SIZE = 200
+const LOG_PAGE_SIZE = 100
 const CHART_WIDTH = 1500
 const CHART_HEIGHT = 360
 const CHART_LEFT = 68
@@ -323,6 +325,7 @@ const assetTrendPalette = computed(() => [
 ])
 
 const assets = ref([])
+const assetHistoryLogs = ref([])
 const loading = ref(false)
 const loadError = ref('')
 const activeChartPoint = ref(null)
@@ -521,7 +524,9 @@ const chartBars = computed(() => {
   const width = Math.max(5, Math.min(12, slot * 0.42))
 
   return rows.map((row, index) => {
-    const height = Math.max(2, (row.barValue / chartMaxValue.value) * CHART_INNER_HEIGHT)
+    const height = row.barValue > 0
+      ? Math.max(2, (row.barValue / chartMaxValue.value) * CHART_INNER_HEIGHT)
+      : 0
     return {
       key: row.key,
       x: CHART_LEFT + index * slot + (slot - width) / 2,
@@ -619,6 +624,13 @@ function rankByField(field) {
 }
 
 function buildTrendRows() {
+  const rowsFromLogs = buildTrendRowsFromLogs()
+  if (rowsFromLogs) return rowsFromLogs
+
+  return buildTrendRowsFromAssets()
+}
+
+function buildTrendRowsFromAssets() {
   const datedAssets = assets.value
     .map((asset) => ({
       asset,
@@ -644,7 +656,7 @@ function buildTrendRows() {
   })
 
   if (!dayMap.size) {
-    return buildFallbackTrendRows(endDate)
+    return buildFlatTrendRows(endDate, undatedCount)
   }
 
   return Array.from({ length: CHART_DAYS }, (_, index) => {
@@ -662,24 +674,114 @@ function buildTrendRows() {
   })
 }
 
-function buildFallbackTrendRows(endDate) {
-  const total = Math.max(totalAssets.value, 1)
+function buildTrendRowsFromLogs() {
+  const events = buildHistoryEvents()
+  if (!events.length) return null
+
+  const endDate = getTrendEndDate(events)
   const startDate = addDays(endDate, -(CHART_DAYS - 1))
-  let cumulative = 0
+  const eventsByDay = new Map()
+
+  events.forEach((event) => {
+    if (event.date > endDate) return
+    const key = toDateKey(event.date)
+    const current = eventsByDay.get(key) || { additions: 0, delta: 0 }
+    current.additions += event.additions
+    current.delta += event.delta
+    eventsByDay.set(key, current)
+  })
+
+  const netDeltaUntilEnd = events.reduce((sum, event) => (
+    event.date <= endDate ? sum + event.delta : sum
+  ), 0)
+  let cumulative = Math.max(0, totalAssets.value - netDeltaUntilEnd)
+
+  events.forEach((event) => {
+    if (event.date < startDate) {
+      cumulative = Math.max(0, cumulative + event.delta)
+    }
+  })
 
   return Array.from({ length: CHART_DAYS }, (_, index) => {
     const date = addDays(startDate, index)
-    const progress = (index + 1) / CHART_DAYS
-    const wave = ((index * 7) % 11) / 11
-    const dailyBase = Math.max(1, Math.ceil(total / CHART_DAYS))
-    const barValue = Math.max(0, Math.round(dailyBase * (0.35 + progress * 0.8 + wave)))
-    cumulative = Math.min(total, cumulative + barValue)
+    const key = toDateKey(date)
+    const day = eventsByDay.get(key) || { additions: 0, delta: 0 }
+    cumulative = Math.max(0, cumulative + day.delta)
+
+    return {
+      key,
+      date,
+      barValue: day.additions,
+      lineValue: cumulative,
+    }
+  })
+}
+
+function buildHistoryEvents() {
+  const events = []
+
+  assetHistoryLogs.value.forEach((log) => {
+    if (log.action === 'asset.create') {
+      const date = parseDate(changeAfter(log, 'purchase_date') || log.created_at)
+      if (date) events.push({ date, additions: 1, delta: 1 })
+      return
+    }
+
+    if (log.action === 'asset.import') {
+      const dailyCounts = log.extra?.daily_counts
+      if (dailyCounts && typeof dailyCounts === 'object') {
+        Object.entries(dailyCounts).forEach(([dateText, count]) => {
+          const date = parseDate(dateText)
+          const value = Math.max(0, Number(count) || 0)
+          if (date && value > 0) {
+            events.push({ date, additions: value, delta: value })
+          }
+        })
+      }
+
+      const undatedSuccess = Math.max(0, Number(log.extra?.undated_success) || 0)
+      const fallbackSuccess = dailyCounts ? 0 : parseImportSuccess(log)
+      const fallbackCount = undatedSuccess || fallbackSuccess
+      if (fallbackCount > 0) {
+        const date = parseDate(log.created_at)
+        if (date) events.push({ date, additions: fallbackCount, delta: fallbackCount })
+      }
+      return
+    }
+
+    if (log.action === 'asset.delete') {
+      const date = parseDate(log.created_at)
+      if (date) events.push({ date, additions: 0, delta: -1 })
+    }
+  })
+
+  return events.sort((a, b) => a.date - b.date)
+}
+
+function changeAfter(log, field) {
+  const change = (log.changes || []).find((item) => item.field === field)
+  return change?.after || null
+}
+
+function parseImportSuccess(log) {
+  const extraSuccess = Number(log.extra?.success)
+  if (Number.isFinite(extraSuccess) && extraSuccess > 0) return extraSuccess
+
+  const match = String(log.summary || '').match(/成功\s*(\d+)/)
+  return match ? Number(match[1]) : 0
+}
+
+function buildFlatTrendRows(endDate, cumulativeValue = 0) {
+  const startDate = addDays(endDate, -(CHART_DAYS - 1))
+
+  return Array.from({ length: CHART_DAYS }, (_, index) => {
+    const date = addDays(startDate, index)
 
     return {
       key: toDateKey(date),
       date,
-      barValue,
-      lineValue: cumulative,
+      barValue: 0,
+      lineValue: Math.max(0, cumulativeValue),
     }
   })
 }
@@ -832,22 +934,62 @@ async function loadOverview() {
   loadError.value = ''
 
   try {
-    const firstPage = await listAssets({ page: 1, page_size: PAGE_SIZE })
-    const total = Number(firstPage?.total || 0)
-    const rows = Array.isArray(firstPage?.items) ? [...firstPage.items] : []
-    const pageCount = Math.ceil(total / PAGE_SIZE)
-
-    for (let page = 2; page <= pageCount; page += 1) {
-      const data = await listAssets({ page, page_size: PAGE_SIZE })
-      if (Array.isArray(data?.items)) rows.push(...data.items)
-    }
+    const [rows, logs] = await Promise.all([
+      loadAllAssets(),
+      loadAssetHistoryLogs(),
+    ])
 
     assets.value = rows
+    assetHistoryLogs.value = logs
   } catch {
     loadError.value = '总览数据加载失败'
   } finally {
     loading.value = false
   }
+}
+
+async function loadAllAssets() {
+  const firstPage = await listAssets({ page: 1, page_size: PAGE_SIZE })
+  const total = Number(firstPage?.total || 0)
+  const rows = Array.isArray(firstPage?.items) ? [...firstPage.items] : []
+  const pageCount = Math.ceil(total / PAGE_SIZE)
+
+  for (let page = 2; page <= pageCount; page += 1) {
+    const data = await listAssets({ page, page_size: PAGE_SIZE })
+    if (Array.isArray(data?.items)) rows.push(...data.items)
+  }
+
+  return rows
+}
+
+async function loadAssetHistoryLogs() {
+  const actions = ['asset.create', 'asset.import', 'asset.delete']
+  const groups = await Promise.all(actions.map((action) => loadLogsByAction(action)))
+  return groups.flat()
+}
+
+async function loadLogsByAction(action) {
+  const firstPage = await listLogs({
+    page: 1,
+    page_size: LOG_PAGE_SIZE,
+    scope: 'all',
+    action,
+  })
+  const total = Number(firstPage?.total || 0)
+  const rows = Array.isArray(firstPage?.items) ? [...firstPage.items] : []
+  const pageCount = Math.ceil(total / LOG_PAGE_SIZE)
+
+  for (let page = 2; page <= pageCount; page += 1) {
+    const data = await listLogs({
+      page,
+      page_size: LOG_PAGE_SIZE,
+      scope: 'all',
+      action,
+    })
+    if (Array.isArray(data?.items)) rows.push(...data.items)
+  }
+
+  return rows
 }
 
 onMounted(() => {
