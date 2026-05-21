@@ -187,6 +187,20 @@ class UnreadCountOut(BaseModel):
     unread: int
 
 
+class ActivityActionStat(BaseModel):
+    """单个动作类型在当前筛选下的计数。"""
+
+    action: str = Field(..., description="动作代码，例如 asset.create")
+    count: int = Field(..., description="该动作在当前筛选条件下的日志条数")
+
+
+class ActivityActionStatsOut(BaseModel):
+    """日志类型占比响应（不受分页影响）。"""
+
+    total: int = Field(..., description="所有动作的总条数")
+    items: List[ActivityActionStat] = Field(default_factory=list)
+
+
 class MarkReadIn(BaseModel):
     ids: Optional[List[int]] = Field(
         default=None,

@@ -42,6 +42,26 @@ def list_logs(
 
 
 @router.get(
+    "/type-stats",
+    response_model=schemas.ActivityActionStatsOut,
+    summary="按当前筛选条件统计各动作类型的日志条数（不分页）",
+)
+def get_type_stats(
+    scope: str = Query("all", description="all=全员视图 / mine=仅自己"),
+    keyword: Optional[str] = Query(None, description="按摘要/对象/操作人模糊搜索"),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    total, items = activity.action_stats(
+        db,
+        scope=scope,
+        current_user=current_user,
+        keyword=keyword,
+    )
+    return {"total": total, "items": items}
+
+
+@router.get(
     "/unread-count",
     response_model=schemas.UnreadCountOut,
     summary="获取当前用户未读消息数",

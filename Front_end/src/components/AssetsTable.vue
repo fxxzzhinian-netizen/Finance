@@ -598,7 +598,7 @@ const aiSearching = ref(false)
 
 const query = reactive({
   page: 1,
-  page_size: 10,
+  page_size: 5,
   keyword: '',
   status: '',
   category: '',
@@ -1448,59 +1448,8 @@ html.dark .svg-icon-btn.qr:hover svg { fill: #f0f0f0; }
 }
 
 /* ===================== 编辑/新增资产弹窗 UI 美化 ===================== */
-/* 16:9 电脑屏幕比例：宽度 75vw（最小 1100px、最大 1500px），高度按内容自适应 */
-.asset-edit-dialog :deep(.el-dialog) {
-  border-radius: 14px;
-  overflow: hidden;
-  box-shadow: 0 24px 60px rgba(60, 45, 25, 0.18), 0 4px 12px rgba(60, 45, 25, 0.08);
-  border: 1px solid #efe4d0;
-  background: #ffffff;
-  min-width: 1100px;
-  max-width: 1500px;
-  height: clamp(560px, calc(75vw * 9 / 16), 780px);
-  max-height: 90vh;
-  margin: 0 !important;
-  display: flex;
-  flex-direction: column;
-}
-.asset-edit-dialog :deep(.el-dialog__header) {
-  margin: 0;
-  padding: 0;
-  background: #ffffff;
-  border-bottom: none;
-  height: 0;
-}
-.asset-edit-dialog .dialog-header {
-  display: none;
-}
-.asset-edit-dialog :deep(.el-dialog__headerbtn) {
-  top: 14px;
-  right: 14px;
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  z-index: 2;
-  transition: background-color 0.2s ease;
-}
-.asset-edit-dialog :deep(.el-dialog__headerbtn:hover) {
-  background-color: rgba(var(--theme-primary-deep-rgb), 0.08);
-}
-.asset-edit-dialog :deep(.el-dialog__close) {
-  font-size: 18px;
-  color: #999;
-}
-.asset-edit-dialog :deep(.el-dialog__body) {
-  padding: 24px 36px 10px;
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-}
-.asset-edit-dialog :deep(.el-dialog__footer) {
-  padding: 16px 36px 22px;
-  border-top: 1px solid var(--theme-table-line, #f3ece0);
-  background: #ffffff;
-  flex-shrink: 0;
-}
+/* 弹窗根容器与 body/footer 的全局样式已迁移到下方非 scoped <style> 块
+   （asset-edit-dialog 是 append-to-body 的 dialog，scoped 选择器无法命中） */
 
 /* ===== 顶部资产摘要（无底色） ===== */
 /* ===== 表单分组（放大版 + 高密度） ===== */
@@ -2140,16 +2089,58 @@ html.dark .assets-table .gold-table :deep(td.el-table-fixed-column--right::befor
 </style>
 
 <style>
-html.dark .asset-edit-dialog .el-dialog {
-  background: var(--bg-card) !important;
-  border-color: var(--theme-border) !important;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55), 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+/* ===================== 编辑/新增资产弹窗 框架样式（teleport 出去，必须用全局样式） ===================== */
+/* 注意：.asset-edit-dialog 这个 class 是直接挂在 el-dialog 根上，
+   所以它和 .el-dialog 是同一个元素，必须连写 .asset-edit-dialog.el-dialog */
+.asset-edit-dialog.el-dialog {
+  border-radius: 14px;
+  overflow: hidden;
+  min-width: 1100px;
+  max-width: 1500px;
+  height: clamp(560px, calc(75vw * 9 / 16), 780px);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
 }
-html.dark .asset-edit-dialog .el-dialog__header,
-html.dark .asset-edit-dialog .el-dialog__footer {
-  background: var(--bg-card) !important;
-  border-top-color: var(--theme-table-line) !important;
+.asset-edit-dialog .el-dialog__header {
+  margin: 0;
+  padding: 0;
+  background: #ffffff;
+  border-bottom: none;
+  height: 0;
 }
+.asset-edit-dialog .dialog-header {
+  display: none;
+}
+.asset-edit-dialog .el-dialog__headerbtn {
+  top: 14px;
+  right: 14px;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  z-index: 2;
+  transition: background-color 0.2s ease;
+}
+.asset-edit-dialog .el-dialog__headerbtn:hover {
+  background-color: rgba(var(--theme-primary-deep-rgb), 0.08);
+}
+.asset-edit-dialog .el-dialog__close {
+  font-size: 18px;
+  color: #999;
+}
+.asset-edit-dialog .el-dialog__body {
+  padding: 24px 0 0;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.asset-edit-dialog .el-dialog__footer {
+  border-top: 1px solid var(--theme-table-line, #f3ece0);
+  flex-shrink: 0;
+}
+
+/* ===================== 暗色模式 ===================== */
 html.dark .asset-edit-dialog .el-dialog__close {
   color: var(--text-secondary) !important;
 }

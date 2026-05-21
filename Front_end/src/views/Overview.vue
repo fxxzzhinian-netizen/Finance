@@ -3,35 +3,86 @@
     <section class="overview-showcase" aria-label="资产总览">
       <div class="gauge-panel">
         <div class="gauge-wrap" aria-label="资产总数">
-          <svg class="gauge-svg" viewBox="0 0 360 230" role="img" aria-hidden="true">
-            <path
-              v-for="segment in gaugeSegments"
-              :key="segment.key"
-              class="gauge-segment"
-              d="M 46 184 A 134 134 0 0 1 314 184"
-              pathLength="100"
-              :style="{
-                stroke: segment.color,
-                strokeDasharray: `${segment.length} 100`,
-                strokeDashoffset: -segment.start,
-              }"
+          <span class="gauge-orbit gauge-orbit-outer" aria-hidden="true"></span>
+
+          <svg
+            class="gauge-svg"
+            viewBox="0 0 360 360"
+            role="img"
+            aria-hidden="true"
+            :style="{ '--gauge-start-angle': `${GAUGE_START_ANGLE}deg` }"
+          >
+            <defs>
+              <linearGradient id="overviewGaugeProgress" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="var(--theme-primary-light-4, #fff6d8)" stop-opacity="1" />
+                <stop offset="52%" stop-color="var(--theme-primary, #c5a47e)" stop-opacity="1" />
+                <stop offset="100%" stop-color="var(--theme-primary-deep, #8a7355)" stop-opacity="0.9" />
+              </linearGradient>
+              <radialGradient id="overviewGaugeGlow" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="var(--theme-primary-light-4, #fff6d8)" stop-opacity="1" />
+                <stop offset="42%" stop-color="var(--theme-primary, #c5a47e)" stop-opacity="0.86" />
+                <stop offset="100%" stop-color="var(--theme-primary, #c5a47e)" stop-opacity="0" />
+              </radialGradient>
+            </defs>
+            <circle class="gauge-disk" cx="180" cy="180" r="122" />
+            <circle
+              class="gauge-progress-tail"
+              cx="180"
+              cy="180"
+              r="104"
+              :stroke-dasharray="gaugeTailDash"
+              :stroke-dashoffset="gaugeTailOffset"
+            />
+            <circle
+              v-if="gaugeProgressLength > 0"
+              class="gauge-progress"
+              cx="180"
+              cy="180"
+              r="104"
+              stroke="url(#overviewGaugeProgress)"
+              :stroke-dasharray="gaugeProgressDash"
+            />
+            <circle
+              v-if="gaugeProgressLength > 0"
+              class="gauge-light-dot"
+              :cx="gaugeLightPoint.x"
+              :cy="gaugeLightPoint.y"
+              r="5"
+              fill="url(#overviewGaugeGlow)"
             />
           </svg>
+
           <div class="gauge-center">
             <strong>{{ formatNumber(totalAssets) }}</strong>
             <span>资产总数</span>
           </div>
+
+          <div class="gauge-badge" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="28" height="28">
+              <path d="M12 3.2l7 2.3v5.7c0 4.3-2.9 7.7-7 9.4-4.1-1.7-7-5.1-7-9.4V5.5l7-2.3z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+              <path d="M8.7 12.2l2.2 2.2 4.5-4.7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
         </div>
       </div>
 
-      <div class="kpi-panel" aria-label="资产关键指标">
-        <div v-for="item in kpiCards" :key="item.label" class="kpi-item">
-          <div class="kpi-label">
-            <span class="kpi-dot" :style="{ background: item.color }"></span>
-            <span>{{ item.label }}</span>
-            <i>i</i>
+      <div class="overview-right-stack">
+        <div class="kpi-panel" aria-label="资产关键指标">
+        <div
+          v-for="item in kpiCards"
+          :key="item.label"
+          class="kpi-item"
+          :style="{ '--kpi-color': item.color }"
+        >
+          <span class="kpi-icon" aria-hidden="true" v-html="item.icon"></span>
+          <div class="kpi-content">
+            <div class="kpi-label">
+              <span>{{ item.label }}</span>
+              <i>i</i>
+            </div>
+            <strong>{{ item.value }}</strong>
+            <span class="kpi-accent" aria-hidden="true"></span>
           </div>
-          <strong>{{ item.value }}</strong>
         </div>
       </div>
 
@@ -47,6 +98,7 @@
           </span>
         </div>
 
+        <div class="asset-trend-chart-wrap" @pointerleave="clearAssetTrendPoint">
         <svg
           class="asset-trend-chart"
           :viewBox="`0 0 ${ASSET_TREND_WIDTH} ${ASSET_TREND_HEIGHT}`"
@@ -68,7 +120,7 @@
                 :y2="row.y"
               />
               <text :x="ASSET_TREND_LEFT - 12" :y="row.y + 4" text-anchor="end">
-                {{ row.value }}
+                {{ row.value }}%
               </text>
             </g>
           </g>
@@ -108,7 +160,40 @@
               {{ label.text }}
             </text>
           </g>
+
+          <g class="asset-trend-hit-layer">
+            <rect
+              v-for="point in assetTrendInteractive"
+              :key="`asset-hit-${point.key}`"
+              :x="point.hitX"
+              :y="ASSET_TREND_TOP"
+              :width="point.hitWidth"
+              :height="ASSET_TREND_BOTTOM - ASSET_TREND_TOP"
+              tabindex="0"
+              @focus="setActiveAssetTrendPoint(point)"
+              @pointerenter="setActiveAssetTrendPoint(point)"
+              @pointermove="setActiveAssetTrendPoint(point)"
+              @touchstart.prevent="setActiveAssetTrendPoint(point)"
+            />
+          </g>
         </svg>
+
+        <div
+          v-if="activeAssetTrendPoint"
+          class="asset-trend-tooltip trend-tooltip"
+          :style="assetTrendTooltipStyle"
+        >
+          <strong>{{ activeAssetTrendPoint.dateText }}</strong>
+          <span
+            v-for="metric in activeAssetTrendPoint.metrics"
+            :key="metric.label"
+          >
+            <i :style="{ background: metric.color }"></i>
+            {{ metric.label }}：{{ metric.valueText }}
+          </span>
+        </div>
+        </div>
+      </div>
       </div>
     </section>
 
@@ -247,16 +332,15 @@ const CHART_BOTTOM = 312
 const CHART_DAYS = 44
 const CHART_INNER_WIDTH = CHART_RIGHT - CHART_LEFT
 const CHART_INNER_HEIGHT = CHART_BOTTOM - CHART_TOP
-const ASSET_TREND_WIDTH = 620
+const ASSET_TREND_WIDTH = 760
 const ASSET_TREND_HEIGHT = 250
-const ASSET_TREND_LEFT = 38
-const ASSET_TREND_RIGHT = 602
+const ASSET_TREND_LEFT = 44
+const ASSET_TREND_RIGHT = 744
 const ASSET_TREND_TOP = 18
 const ASSET_TREND_BOTTOM = 218
 const ASSET_TREND_DAYS = 7
 const ASSET_TREND_INNER_WIDTH = ASSET_TREND_RIGHT - ASSET_TREND_LEFT
 const ASSET_TREND_INNER_HEIGHT = ASSET_TREND_BOTTOM - ASSET_TREND_TOP
-const GAUGE_GAP = 7
 
 const THEME_PALETTES = {
   gold: {
@@ -329,8 +413,51 @@ const assetHistoryLogs = ref([])
 const loading = ref(false)
 const loadError = ref('')
 const activeChartPoint = ref(null)
+const activeAssetTrendPoint = ref(null)
 
 const totalAssets = computed(() => assets.value.length)
+
+const GAUGE_CENTER = 180
+const GAUGE_RADIUS = 104
+const GAUGE_START_ANGLE = 135
+const GAUGE_ARC_ANGLE = 270
+const GAUGE_CIRCUMFERENCE = 2 * Math.PI * GAUGE_RADIUS
+const GAUGE_ARC_LENGTH = GAUGE_CIRCUMFERENCE * (GAUGE_ARC_ANGLE / 360)
+
+const toGaugeDash = (value) => Number(value.toFixed(3))
+
+const gaugeProgressRatio = computed(() => (
+  Math.min(Math.max(totalAssets.value / 10, 0), 1)
+))
+
+const gaugeProgressLength = computed(() => (
+  toGaugeDash(GAUGE_ARC_LENGTH * gaugeProgressRatio.value)
+))
+
+const gaugeTailLength = computed(() => (
+  toGaugeDash(Math.max(GAUGE_ARC_LENGTH - gaugeProgressLength.value, 0))
+))
+
+const gaugeProgressDash = computed(() => (
+  `${gaugeProgressLength.value} ${toGaugeDash(GAUGE_CIRCUMFERENCE)}`
+))
+
+const gaugeTailDash = computed(() => (
+  `${gaugeTailLength.value} ${toGaugeDash(GAUGE_CIRCUMFERENCE)}`
+))
+
+const gaugeTailOffset = computed(() => (
+  -gaugeProgressLength.value
+))
+
+const gaugeLightPoint = computed(() => {
+  const angle = (GAUGE_START_ANGLE + (GAUGE_ARC_ANGLE * gaugeProgressRatio.value) - 2) * (Math.PI / 180)
+
+  return {
+    x: toGaugeDash(GAUGE_CENTER + (GAUGE_RADIUS * Math.cos(angle))),
+    y: toGaugeDash(GAUGE_CENTER + (GAUGE_RADIUS * Math.sin(angle))),
+  }
+})
 
 const activeCount = computed(() => (
   countStatus(['在用'])
@@ -355,57 +482,56 @@ const warrantyCount = computed(() => {
 
 const warrantyRatio = computed(() => ratio(warrantyCount.value, totalAssets.value))
 
-const gaugeSegments = computed(() => {
-  if (!totalAssets.value) return []
-
-  const segments = [
-    { key: 'active', value: activeRatio.value, color: overviewColors.value.active },
-    { key: 'warranty', value: warrantyRatio.value, color: overviewColors.value.warranty },
-    { key: 'idle', value: idleRatio.value, color: overviewColors.value.idle },
-    { key: 'scrap', value: scrapRatio.value, color: overviewColors.value.scrap },
-  ].filter((segment) => segment.value > 0)
-
-  const totalValue = segments.reduce((sum, segment) => sum + segment.value, 0)
-  const valueScale = totalValue > 100 ? 100 / totalValue : 1
-  const totalGap = Math.max(0, (segments.length - 1) * GAUGE_GAP)
-  const availableLength = Math.max(0, 100 - totalGap)
-  let cursor = 0
-
-  return segments.map((segment) => {
-    const length = Math.max(
-      3,
-      ((segment.value * valueScale) / 100) * availableLength,
-    )
-    const item = {
-      ...segment,
-      start: Number(cursor.toFixed(2)),
-      length: Number(length.toFixed(2)),
-    }
-    cursor += length + GAUGE_GAP
-    return item
-  })
-})
+const KPI_ICONS = {
+  // 盾牌 + 勾
+  active:
+    '<svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true">' +
+      '<path fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" d="M12 3l7.5 2.4v6.1c0 4.3-3 7.9-7.5 9.5-4.5-1.6-7.5-5.2-7.5-9.5V5.4L12 3z"/>' +
+      '<path fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" d="M8.5 12.4l2.6 2.4 4.4-4.6"/>' +
+    '</svg>',
+  // 扳手
+  warranty:
+    '<svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true">' +
+      '<path fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" d="M15.5 3.6a4.6 4.6 0 0 0-5.8 5.8L3.6 15.5l2.9 2.9 6.1-6.1a4.6 4.6 0 0 0 5.8-5.8l-2.6 2.6-2.2-.6-.6-2.2 2.5-2.7z"/>' +
+    '</svg>',
+  // 垃圾桶
+  scrap:
+    '<svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true">' +
+      '<path fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" d="M4 7h16M9 7V4.8h6V7M6.5 7l1 12.2A1.6 1.6 0 0 0 9.1 20.8h5.8a1.6 1.6 0 0 0 1.6-1.6L17.5 7"/>' +
+      '<path fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" d="M10.3 10.8v6.4M13.7 10.8v6.4"/>' +
+    '</svg>',
+  // 时钟
+  idle:
+    '<svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true">' +
+      '<circle cx="12" cy="12" r="8.4" fill="none" stroke="currentColor" stroke-width="1.2"/>' +
+      '<path fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" d="M12 7.4v4.8l3.1 1.9"/>' +
+    '</svg>',
+}
 
 const kpiCards = computed(() => [
   {
     label: '在用率',
     value: formatPercent(activeRatio.value),
     color: overviewColors.value.active,
+    icon: KPI_ICONS.active,
   },
   {
     label: '在保率',
     value: formatPercent(warrantyRatio.value),
     color: overviewColors.value.warranty,
+    icon: KPI_ICONS.warranty,
   },
   {
     label: '废弃率',
     value: formatPercent(scrapRatio.value),
     color: overviewColors.value.scrap,
+    icon: KPI_ICONS.scrap,
   },
   {
     label: '闲置率',
     value: formatPercent(idleRatio.value),
     color: overviewColors.value.idle,
+    icon: KPI_ICONS.idle,
   },
 ])
 
@@ -456,7 +582,7 @@ const assetTrendSeries = computed(() => {
       })
       const value = metric.getValue(rows, date)
       const x = ASSET_TREND_LEFT + (ASSET_TREND_INNER_WIDTH / (ASSET_TREND_DAYS - 1)) * index
-      const y = ASSET_TREND_BOTTOM - (value / 100) * ASSET_TREND_INNER_HEIGHT
+      const y = ASSET_TREND_BOTTOM - (value / ASSET_TREND_MAX) * ASSET_TREND_INNER_HEIGHT
 
       return {
         key: toDateKey(date),
@@ -478,10 +604,12 @@ const assetTrendSeries = computed(() => {
   })
 })
 
+const ASSET_TREND_MAX = 120
+
 const assetTrendGridRows = computed(() => (
-  [100, 75, 50, 25, 0].map((value) => ({
+  [120, 90, 60, 30, 0].map((value) => ({
     value,
-    y: ASSET_TREND_BOTTOM - (value / 100) * ASSET_TREND_INNER_HEIGHT,
+    y: ASSET_TREND_BOTTOM - (value / ASSET_TREND_MAX) * ASSET_TREND_INNER_HEIGHT,
   }))
 ))
 
@@ -492,6 +620,47 @@ const assetTrendXAxisLabels = computed(() => {
     text: formatMonthDay(date),
     x: ASSET_TREND_LEFT + (ASSET_TREND_INNER_WIDTH / (ASSET_TREND_DAYS - 1)) * index,
   }))
+})
+
+const assetTrendInteractive = computed(() => {
+  const series = assetTrendSeries.value
+  if (!series.length) return []
+  const dayCount = series[0].points.length
+  if (!dayCount) return []
+
+  const slot = dayCount > 1 ? ASSET_TREND_INNER_WIDTH / (dayCount - 1) : ASSET_TREND_INNER_WIDTH
+  const hitWidth = Math.max(28, Math.min(80, slot * 0.92))
+
+  return Array.from({ length: dayCount }, (_, index) => {
+    const x = ASSET_TREND_LEFT + (ASSET_TREND_INNER_WIDTH / Math.max(dayCount - 1, 1)) * index
+    const point = series[0].points[index]
+    return {
+      key: point?.key || `asset-trend-${index}`,
+      date: point?.date,
+      dateText: point?.date ? formatMonthDay(point.date) : '',
+      x,
+      hitX: x - hitWidth / 2,
+      hitWidth,
+      metrics: series.map((s) => {
+        const p = s.points[index]
+        const value = p?.value ?? 0
+        return {
+          label: s.label,
+          color: s.color,
+          value,
+          valueText: `${value.toFixed(1)}%`,
+        }
+      }),
+    }
+  })
+})
+
+const assetTrendTooltipStyle = computed(() => {
+  if (!activeAssetTrendPoint.value) return {}
+  return {
+    left: `clamp(80px, ${(activeAssetTrendPoint.value.x / ASSET_TREND_WIDTH) * 100}%, calc(100% - 80px))`,
+    top: '12%',
+  }
 })
 
 const trendRows = computed(() => buildTrendRows())
@@ -882,6 +1051,14 @@ function clearActiveChartPoint() {
   activeChartPoint.value = null
 }
 
+function setActiveAssetTrendPoint(point) {
+  activeAssetTrendPoint.value = point
+}
+
+function clearAssetTrendPoint() {
+  activeAssetTrendPoint.value = null
+}
+
 function countStatus(aliases) {
   return assets.value.filter((asset) => (
     aliases.includes(String(asset.status || '').trim())
@@ -1011,7 +1188,7 @@ onUnmounted(() => {
   min-height: calc(100% + 40px);
   margin: -20px -24px;
   padding: 28px var(--overview-page-pad-x);
-  background: var(--bg-page);
+  /* background: var(--bg-page); */
   color: var(--text-primary);
   font-family: 'HarmonyOS Sans SC', 'Noto Sans SC', 'PingFang SC',
     'Microsoft YaHei UI', 'Microsoft YaHei', -apple-system,
@@ -1024,17 +1201,24 @@ onUnmounted(() => {
   --overview-muted: rgba(105, 118, 148, 0.13);
   --overview-separator: rgba(118, 135, 162, 0.14);
   display: grid;
-  grid-template-columns: minmax(360px, 410px) minmax(320px, 360px) minmax(560px, 620px);
-  column-gap: 24px;
+  grid-template-columns: minmax(360px, 420px) minmax(560px, 1fr);
+  column-gap: 32px;
   align-items: stretch;
   justify-content: center;
   width: 100%;
   max-width: 1480px;
-  min-height: 238px;
   margin: 0 auto;
   overflow: visible;
   background: transparent;
   animation: overview-fade-up 0.52s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.overview-right-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+  min-height: 100%;
 }
 
 .gauge-panel {
@@ -1048,13 +1232,60 @@ onUnmounted(() => {
 
 .gauge-wrap {
   position: relative;
-  width: min(100%, 360px);
-  aspect-ratio: 360 / 230;
+  width: min(100%, 380px);
+  aspect-ratio: 1 / 1;
+  isolation: isolate;
+}
+
+.gauge-wrap::before {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* 外部多重细环，模拟设计图里背景轨道 */
+.gauge-wrap::before {
+  inset: -4%;
+  border: 1px solid rgba(var(--theme-primary-rgb), 0.16);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 0 32px rgba(var(--theme-primary-rgb), 0.08);
+}
+
+.gauge-orbit {
+  position: absolute;
+  inset: 2%;
+  z-index: 1;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.gauge-orbit-outer {
+  overflow: visible;
+  border: 1px solid rgba(var(--theme-primary-rgb), 0.22);
+}
+
+.gauge-orbit-outer::before,
+.gauge-orbit-outer::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: inherit;
+  border: 1px solid rgba(var(--theme-primary-rgb), 0.2);
+  opacity: 0;
+  animation: gauge-water-ripple 3.8s ease-out infinite;
+}
+
+.gauge-orbit-outer::after {
+  inset: -16px;
+  animation-delay: 1.9s;
 }
 
 .gauge-svg {
   position: absolute;
   inset: 0;
+  z-index: 3;
   width: 100%;
   height: 100%;
   overflow: visible;
@@ -1064,20 +1295,74 @@ onUnmounted(() => {
   fill: none;
 }
 
-.gauge-segment {
-  stroke-width: 22;
-  stroke-linecap: round;
+.gauge-disk {
+  fill:
+    color-mix(in srgb, var(--theme-surface-subtle, #fffdf8) 58%, transparent);
+  stroke: rgba(255, 255, 255, 0.28);
+  stroke-width: 1.4;
   filter:
-    drop-shadow(0 9px 16px rgba(var(--theme-primary-rgb), 0.18))
-    drop-shadow(0 2px 4px rgba(var(--theme-primary-rgb), 0.10));
-  transform-box: fill-box;
-  transform-origin: center bottom;
-  animation: overview-scale-in 0.56s cubic-bezier(0.22, 1, 0.36, 1) 0.16s both;
+    drop-shadow(0 24px 34px rgba(58, 42, 24, 0.12))
+    drop-shadow(0 0 24px rgba(var(--theme-primary-rgb), 0.08))
+    drop-shadow(0 0 1px rgba(255, 255, 255, 0.55));
+}
+
+.gauge-progress,
+.gauge-progress-tail {
+  fill: none;
+  stroke-linecap: round;
+  transform-box: view-box;
+  transform-origin: 180px 180px;
+  transform: rotate(var(--gauge-start-angle));
+}
+
+.gauge-progress {
+  stroke-width: 18;
+  filter:
+    drop-shadow(0 0 8px rgba(var(--theme-primary-rgb), 0.5))
+    drop-shadow(0 0 18px rgba(var(--theme-primary-rgb), 0.25));
+}
+
+.gauge-progress-tail {
+  stroke: rgba(var(--theme-primary-rgb), 0.26);
+  stroke-width: 4;
+}
+
+.gauge-light-dot {
+  filter:
+    drop-shadow(0 0 8px rgba(var(--theme-primary-rgb), 0.82))
+    drop-shadow(0 0 20px rgba(var(--theme-primary-rgb), 0.4));
+}
+
+.gauge-badge {
+  position: absolute;
+  left: 50%;
+  bottom: 9.5%;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  color: var(--theme-primary-deep, #8a7355);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(255, 255, 255, 0.76), rgba(255, 244, 222, 0.36) 44%, rgba(92, 69, 44, 0.14) 100%);
+  border: 1px solid rgba(var(--theme-primary-rgb), 0.36);
+  box-shadow:
+    inset 0 0 18px rgba(var(--theme-primary-rgb), 0.12),
+    0 0 18px rgba(var(--theme-primary-rgb), 0.2),
+    0 12px 22px rgba(70, 48, 22, 0.14);
+  transform: translateX(-50%);
+  animation: gauge-badge-float 3.2s ease-in-out infinite;
+}
+
+.gauge-badge svg {
+  display: block;
 }
 
 .gauge-center {
   position: absolute;
-  inset: 76px 0 0;
+  inset: 0;
+  z-index: 4;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1087,7 +1372,7 @@ onUnmounted(() => {
 
 .gauge-center strong {
   color: var(--overview-text);
-  font-size: clamp(42px, 4vw, 58px);
+  font-size: clamp(52px, 5vw, 76px);
   font-weight: 750;
   line-height: 1;
   letter-spacing: 0;
@@ -1102,17 +1387,24 @@ onUnmounted(() => {
 
 .kpi-panel {
   display: grid;
-  grid-template-columns: repeat(2, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   align-content: center;
-  row-gap: 22px;
-  column-gap: 34px;
+  row-gap: 18px;
+  column-gap: 24px;
   min-width: 0;
-  padding: 30px 28px;
+  padding: 4px 8px;
   animation: overview-fade-up 0.56s cubic-bezier(0.22, 1, 0.36, 1) 0.12s both;
 }
 
 .kpi-item {
+  --kpi-color: var(--theme-primary, #c5a47e);
+  position: relative;
+  display: grid;
+  grid-template-columns: 70px minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
   min-width: 0;
+  padding: 6px 6px 10px;
   animation: overview-fade-up 0.48s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
@@ -1132,32 +1424,79 @@ onUnmounted(() => {
   animation-delay: 0.28s;
 }
 
+.kpi-icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  color: var(--kpi-color);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.18) 60%, rgba(0, 0, 0, 0.04) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 0 0 1px rgba(var(--theme-primary-rgb), 0.18),
+    0 6px 14px rgba(var(--theme-primary-deep-rgb), 0.12);
+}
+
+.kpi-icon::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1.4px solid transparent;
+  background:
+    conic-gradient(
+      from 220deg,
+      transparent 0deg,
+      color-mix(in srgb, var(--kpi-color) 78%, transparent) 80deg,
+      color-mix(in srgb, var(--kpi-color) 40%, transparent) 150deg,
+      transparent 200deg,
+      transparent 360deg
+    ) border-box;
+  -webkit-mask:
+    linear-gradient(#000 0 0) padding-box,
+    linear-gradient(#000 0 0);
+          mask:
+    linear-gradient(#000 0 0) padding-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+}
+
+.kpi-icon :deep(svg) {
+  display: block;
+  width: 30px;
+  height: 30px;
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--kpi-color) 45%, transparent));
+}
+
+.kpi-content {
+  min-width: 0;
+}
+
 .kpi-label {
   display: flex;
   align-items: center;
-  gap: 7px;
-  min-height: 22px;
+  gap: 6px;
+  min-height: 20px;
   color: var(--overview-label);
-  font-size: 15px;
+  font-size: 13.5px;
   font-weight: 600;
   white-space: nowrap;
-}
-
-.kpi-dot {
-  flex: 0 0 auto;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
 }
 
 .kpi-label i {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 14px;
-  height: 14px;
+  width: 13px;
+  height: 13px;
   color: color-mix(in srgb, var(--overview-label) 72%, #ffffff);
-  font-size: 10px;
+  font-size: 9px;
   font-style: normal;
   font-weight: 700;
   border: 1px solid currentColor;
@@ -1166,21 +1505,66 @@ onUnmounted(() => {
 
 .kpi-item strong {
   display: block;
-  margin-top: 10px;
-  color: var(--overview-text);
-  font-size: 32px;
-  font-weight: 760;
+  margin-top: 6px;
+  color: var(--kpi-color);
+  font-size: 28px;
+  font-weight: 750;
   line-height: 1;
   letter-spacing: 0;
+  text-shadow: 0 0 14px color-mix(in srgb, var(--kpi-color) 32%, transparent);
+}
+
+.kpi-accent {
+  position: relative;
+  display: block;
+  width: 55%;
+  max-width: 140px;
+  height: 2px;
+  margin-top: 14px;
+  border-radius: 999px;
+  background:
+    linear-gradient(
+      90deg,
+      #ffffff 0%,
+      color-mix(in srgb, var(--kpi-color) 92%, transparent) 14%,
+      color-mix(in srgb, var(--kpi-color) 55%, transparent) 38%,
+      color-mix(in srgb, var(--kpi-color) 22%, transparent) 70%,
+      transparent 100%
+    );
+}
+
+.kpi-accent::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 55%;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(
+    color-mix(in srgb, var(--kpi-color) 92%, transparent) 60%,
+    transparent 100%
+  );
+  filter: blur(0.5px);
+  transform: translateY(-50%);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--kpi-color) 70%, transparent);
 }
 
 .asset-trend-panel {
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: stretch;
+  flex: 1 1 auto;
   min-width: 0;
   padding: 18px 14px 14px 18px;
   animation: overview-fade-up 0.56s cubic-bezier(0.22, 1, 0.36, 1) 0.18s both;
+}
+
+.asset-trend-chart-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 220px;
+  margin-top: 6px;
 }
 
 .asset-trend-legend {
@@ -1212,10 +1596,23 @@ onUnmounted(() => {
 .asset-trend-chart {
   display: block;
   width: 100%;
-  height: 210px;
-  margin-top: 2px;
+  height: 100%;
+  min-height: 220px;
   overflow: visible;
   animation: overview-fade-in 0.58s ease 0.28s both;
+}
+
+.asset-trend-hit-layer rect {
+  fill: transparent;
+  cursor: crosshair;
+  outline: none;
+}
+
+.asset-trend-tooltip {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+  z-index: 2;
 }
 
 .asset-trend-grid line {
@@ -1269,7 +1666,6 @@ onUnmounted(() => {
   justify-content: flex-end;
   min-height: 24px;
   margin-bottom: 8px;
-  padding-right: 90px;
 }
 
 .trend-legend {
@@ -1471,11 +1867,63 @@ onUnmounted(() => {
   color: var(--text-primary);
 }
 
-:global(html.dark .overview-page .gauge-center strong),
-:global(html.dark .overview-page .kpi-item strong) {
+:global(html.dark .overview-page .gauge-center strong) {
   color: #f5f7fb !important;
   -webkit-text-fill-color: #f5f7fb;
   text-shadow: 0 0 16px rgba(120, 184, 247, 0.08);
+}
+
+/* 暗色：资产总数仪表盘黑金质感 */
+:global(html.dark .overview-page .gauge-wrap)::before {
+  border-color: rgba(var(--theme-primary-rgb), 0.28);
+}
+
+:global(html.dark .overview-page .gauge-disk) {
+  fill: rgba(22, 27, 40, 0.56);
+  stroke: rgba(255, 255, 255, 0.08);
+  filter:
+    drop-shadow(0 22px 40px rgba(0, 0, 0, 0.36))
+    drop-shadow(0 0 22px rgba(var(--theme-primary-rgb), 0.08));
+}
+
+:global(html.dark .overview-page .gauge-progress) {
+  filter:
+    drop-shadow(0 0 10px rgba(var(--theme-primary-rgb), 0.66))
+    drop-shadow(0 0 22px rgba(var(--theme-primary-rgb), 0.24));
+}
+
+:global(html.dark .overview-page .gauge-progress-tail) {
+  stroke: rgba(var(--theme-primary-rgb), 0.32);
+}
+
+:global(html.dark .overview-page .gauge-orbit-outer) {
+  border-color: rgba(var(--theme-primary-rgb), 0.24);
+}
+
+:global(html.dark .overview-page .gauge-badge) {
+  color: var(--theme-primary, #c5a47e);
+  background:
+    radial-gradient(circle at 50% 35%, rgba(255, 255, 255, 0.1), rgba(28, 31, 42, 0.72) 48%, rgba(7, 10, 18, 0.92) 100%);
+  border-color: rgba(var(--theme-primary-rgb), 0.42);
+  box-shadow:
+    inset 0 0 18px rgba(var(--theme-primary-rgb), 0.08),
+    0 0 20px rgba(var(--theme-primary-rgb), 0.24),
+    0 14px 24px rgba(0, 0, 0, 0.32);
+}
+
+:global(html.dark .overview-page .kpi-item strong) {
+  color: var(--kpi-color);
+  -webkit-text-fill-color: var(--kpi-color);
+  text-shadow: 0 0 18px color-mix(in srgb, var(--kpi-color) 45%, transparent);
+}
+
+:global(html.dark .overview-page .kpi-icon) {
+  background:
+    radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.10) 0%, rgba(255, 255, 255, 0.04) 60%, rgba(0, 0, 0, 0.35) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 0 22px color-mix(in srgb, var(--kpi-color) 22%, transparent);
 }
 
 :global(html.dark .overview-page .gauge-center span),
@@ -1549,6 +1997,33 @@ onUnmounted(() => {
   }
 }
 
+@keyframes gauge-water-ripple {
+  0% {
+    opacity: 0.42;
+    transform: scale(0.985);
+  }
+
+  70% {
+    opacity: 0.08;
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes gauge-badge-float {
+  0%,
+  100% {
+    transform: translateX(-50%) translateY(0);
+  }
+
+  50% {
+    transform: translateX(-50%) translateY(-7px);
+  }
+}
+
 @keyframes overview-scale-in {
   from {
     opacity: 0;
@@ -1576,13 +2051,13 @@ onUnmounted(() => {
 @media (prefers-reduced-motion: reduce) {
   .overview-showcase,
   .gauge-panel,
-  .gauge-segment,
   .kpi-panel,
   .kpi-item,
   .asset-trend-panel,
   .asset-trend-chart,
   .asset-trend-lines path,
   .asset-trend-lines circle,
+  .gauge-badge,
   .trend-panel,
   .trend-bars rect,
   .trend-line,
@@ -1593,11 +2068,8 @@ onUnmounted(() => {
 
 @media (max-width: 1360px) {
   .overview-showcase {
-    grid-template-columns: minmax(340px, 0.95fr) minmax(340px, 1fr);
-  }
-
-  .asset-trend-panel {
-    grid-column: 1 / -1;
+    grid-template-columns: minmax(340px, 0.95fr) minmax(420px, 1fr);
+    column-gap: 22px;
   }
 }
 
@@ -1616,7 +2088,8 @@ onUnmounted(() => {
   }
 
   .kpi-panel {
-    padding: 12px 28px 30px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 12px 8px 18px;
   }
 
   .asset-trend-panel {

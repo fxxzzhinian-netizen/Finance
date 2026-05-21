@@ -1140,7 +1140,7 @@ function onClosed() {
   gap: 0;
   margin: 34px auto 28px;
   padding: 0;
-  width: min(86%, 980px);
+  width: min(95%, 980px);
   list-style: none;
 }
 
@@ -1169,8 +1169,8 @@ function onClosed() {
   content: '';
   position: absolute;
   top: 27px;
-  left: calc(50% + 42px);
-  width: calc(100% - 84px);
+  left: calc(50% + 58px);
+  width: calc(100% - 90px);
   height: 2px;
   background: linear-gradient(90deg, var(--import-step-line-active), var(--import-step-line));
   box-shadow: 0 0 10px rgba(var(--theme-primary-rgb), 0.18);
@@ -1302,8 +1302,8 @@ function onClosed() {
   position: relative;
   z-index: 1;
   display: block;
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
 }
 .import-step-num svg path {
   fill: currentColor;
@@ -1363,7 +1363,7 @@ html.dark .import-step.is-done .import-step-label::after {
 
 .step-body {
   padding: 4px 0 8px;
-  min-height: 320px;
+  min-height: 220px;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -1516,16 +1516,18 @@ html.dark .import-step.is-done .import-step-label::after {
   white-space: nowrap;
 }
 .hr-switch-btn {
-  color: var(--theme-primary-deep, #8a7355) !important;
+  color: var(--theme-primary-deep, #8a7355);
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 3px;
   text-decoration-thickness: 1px;
   text-decoration-color: var(--theme-primary, #c5a47e);
+  border: none;
 }
 .hr-switch-btn:hover {
-  color: var(--theme-text-strong, #5a4730) !important;
+  color: var(--theme-text-strong, #5a4730);
   text-decoration-color: var(--theme-primary-deep, #8a7355);
+  border: none;
 }
 .hr-switch-btn :deep(span) {
   text-decoration: inherit;
@@ -1582,6 +1584,9 @@ html.dark .import-step.is-done .import-step-label::after {
   color: var(--theme-primary-deep, #8a7355);
   font-weight: 600;
   white-space: nowrap;
+}
+html.dark .hp-rownum {
+  color: var(--theme-text-strong, #5a4730);
 }
 .hp-cur {
   margin-left: 6px;
@@ -1836,6 +1841,7 @@ html.dark .import-step.is-done .import-step-label::after {
   flex-direction: column;
   gap: 18px;
   padding: 8px 0 4px;
+  overflow: hidden;
 }
 
 /* 中心庆祝区 */
@@ -1845,9 +1851,9 @@ html.dark .import-step.is-done .import-step-label::after {
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  padding: 90px 24px 32px;
-  min-height: 360px;
-  overflow: visible;
+  padding:58px 24px 0;
+  min-height: 320px;
+  overflow: hidden;
 }
 .result-celebrate.is-success {
   color: #1f9d57;
@@ -1978,20 +1984,18 @@ html.dark .import-step.is-done .import-step-label::after {
   }
 }
 
-/* 烟花层 */
+/* 烟花层：填满庆祝区并裁剪，避免飞出后撑出滚动条 */
 .confetti-layer {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0;
-  height: 0;
+  inset: 0;
   pointer-events: none;
+  overflow: hidden;
   z-index: 3;
 }
 .confetti {
   position: absolute;
-  top: 0;
-  left: 0;
+  top: 50%;
+  left: 50%;
   transform: translate(-50%, -50%);
   opacity: 0;
   animation-name: confetti-burst;
@@ -2123,11 +2127,11 @@ html.dark .import-step.is-done .import-step-label::after {
   margin: 0 !important;
 }
 .el-dialog.asset-import-dialog > .el-dialog__body {
-  flex: 1 1 auto !important;
-  min-height: 0 !important;
-  padding: 12px 28px 16px !important;
-  display: flex !important;
-  flex-direction: column !important;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 12px 28px 16px;
+  display: flex;
+  flex-direction: column;
   overflow-y: auto;
 }
 .el-dialog.asset-import-dialog > .el-dialog__footer {

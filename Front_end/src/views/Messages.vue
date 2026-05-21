@@ -136,6 +136,7 @@
           v-for="group in grouped"
           :key="group.date"
           class="day-group"
+          :class="{ collapsed: isGroupCollapsed(group.date) }"
         >
           <div class="day-label">
             <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
@@ -144,10 +145,23 @@
             <span class="day-text">{{ group.label }}</span>
             <span class="day-count">{{ group.items.length }} 条日志</span>
             <span class="day-line"></span>
+            <button
+              type="button"
+              class="day-toggle"
+              :class="{ collapsed: isGroupCollapsed(group.date) }"
+              :aria-expanded="!isGroupCollapsed(group.date)"
+              :aria-label="isGroupCollapsed(group.date) ? '展开当日日志' : '折叠当日日志'"
+              @click="toggleGroup(group.date)"
+            >
+              <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+                <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6"/>
+              </svg>
+            </button>
           </div>
           <div
             v-for="row in group.items"
             :key="row.id"
+            v-show="!isGroupCollapsed(group.date)"
             class="msg-card"
             :class="[
               `act-${row.action.split('.')[0]}`,
@@ -305,7 +319,7 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { listLogs, markLogsRead } from '../api/logs'
+import { listLogs, markLogsRead, getLogTypeStats } from '../api/logs'
 import { aiParseSearch } from '../api/ai'
 import { toast } from '../utils/toast'
 
@@ -367,7 +381,7 @@ const TYPE_RATIO_COLORS = [
   '#9c66d0',
   '#f0cf59',
   '#99a4b5',
-  '#e6ddd0',
+  '#ada395',
   '#38a6c7',
   '#d8874d',
   '#c75e7f',
@@ -400,12 +414,13 @@ const typeSelectPopperStyle = computed(() => ({
 }))
 
 const showTypeRatio = computed(() => !actionFilter.value)
-const typeRatioTotal = computed(() => items.value.length)
+const typeRatioRaw = ref({ total: 0, items: [] })
+const typeRatioTotal = computed(() => typeRatioRaw.value.total || 0)
 const typeRatioStats = computed(() => {
   const total = typeRatioTotal.value
   const counts = new Map()
-  for (const row of items.value) {
-    counts.set(row.action, (counts.get(row.action) || 0) + 1)
+  for (const row of typeRatioRaw.value.items || []) {
+    counts.set(row.action, (counts.get(row.action) || 0) + (row.count || 0))
   }
 
   const knownStats = actionOptions
@@ -423,7 +438,7 @@ const typeRatioStats = computed(() => {
   const knownValues = new Set(knownStats.map((stat) => stat.value))
   const unknownStats = Array.from(counts.entries())
     .filter(([value]) => !knownValues.has(value))
-    .map(([value, count], index) => ({
+    .map(([value, count]) => ({
       value,
       label: actionLabel(value),
       count,
@@ -438,6 +453,25 @@ const typeRatioStats = computed(() => {
     }))
 })
 
+async function reloadTypeStats() {
+  if (!showTypeRatio.value) {
+    typeRatioRaw.value = { total: 0, items: [] }
+    return
+  }
+  try {
+    const data = await getLogTypeStats({
+      scope: scope.value,
+      keyword: keyword.value || undefined,
+    })
+    typeRatioRaw.value = {
+      total: data?.total || 0,
+      items: Array.isArray(data?.items) ? data.items : [],
+    }
+  } catch {
+    /* 已由拦截器提示 */
+  }
+}
+
 const ACTION_LABEL_MAP = Object.fromEntries(
   actionOptions.filter((o) => o.value).map((o) => [o.value, o.label]),
 )
@@ -446,71 +480,68 @@ function actionLabel(a) {
   return ACTION_LABEL_MAP[a] || a
 }
 
-// 每个动作配一个高识别度的语义化图标（双图层：底色块 + 角标）
+// 每个动作配一个单层、线条风格的语义化图标（参考 lucide / heroicons）
 const ACTION_ICON_MAP = {
-  // 新增资产：纸箱 + 加号角标
+  // 新增资产：方框 + 加号（plus-square）
   'asset.create':
-    '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">' +
-      '<path fill="currentColor" d="M21 8.5L12 4 3 8.5v7L12 20l9-4.5v-7zM12 6.18L18.18 9 12 12.06 5.82 9 12 6.18zM5 10.62l6 2.97v6.16l-6-3v-6.13zm14 6.13l-6 3v-6.16l6-2.97v6.13z"/>' +
-      '<g transform="translate(15.5 14)">' +
-        '<circle cx="4" cy="4" r="4.5" fill="#fff"/>' +
-        '<path fill="#2c7a5e" d="M4 1.5v5M1.5 4h5" stroke="#2c7a5e" stroke-width="1.5" stroke-linecap="round"/>' +
-      '</g>' +
+    '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<rect x="3" y="3" width="18" height="18" rx="4"/>' +
+      '<path d="M12 8v8M8 12h8"/>' +
     '</svg>',
-  // 修改资产：纸箱 + 铅笔角标
+  // 修改资产：铅笔（pencil / edit）
   'asset.update':
-    '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">' +
-      '<path fill="currentColor" d="M21 8.5L12 4 3 8.5v7L12 20l9-4.5v-7zM12 6.18L18.18 9 12 12.06 5.82 9 12 6.18zM5 10.62l6 2.97v6.16l-6-3v-6.13zm14 6.13l-6 3v-6.16l6-2.97v6.13z"/>' +
-      '<g transform="translate(13.5 12)">' +
-        '<circle cx="5" cy="5" r="5.2" fill="#fff"/>' +
-        '<path fill="#b08a52" d="M2.2 7l.55-1.65L6.4 1.7a.7.7 0 0 1 .98 0l.92.92a.7.7 0 0 1 0 .98L4.65 7.25 3 7.8a.4.4 0 0 1-.5-.5L2.2 7z"/>' +
-      '</g>' +
+    '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<path d="M12 20h9"/>' +
+      '<path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>' +
     '</svg>',
-  // 删除资产：纸箱 + 红色叉角标
+  // 删除资产：垃圾桶（trash）
   'asset.delete':
-    '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">' +
-      '<path fill="currentColor" d="M21 8.5L12 4 3 8.5v7L12 20l9-4.5v-7zM12 6.18L18.18 9 12 12.06 5.82 9 12 6.18zM5 10.62l6 2.97v6.16l-6-3v-6.13zm14 6.13l-6 3v-6.16l6-2.97v6.13z" opacity="0.55"/>' +
-      '<g transform="translate(13.5 12)">' +
-        '<circle cx="5" cy="5" r="5.2" fill="#fff"/>' +
-        '<path stroke="#c44545" stroke-width="1.6" stroke-linecap="round" d="M3 3l4 4M7 3l-4 4"/>' +
-      '</g>' +
+    '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<path d="M3 6h18"/>' +
+      '<path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>' +
+      '<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>' +
+      '<path d="M10 11v6M14 11v6"/>' +
     '</svg>',
-  // 批量导入：纸箱 + 向下箭头角标（表示从外部一次导入很多）
+  // 批量导入：向下托盘（download / import）
   'asset.import':
-    '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">' +
-      '<path fill="currentColor" d="M21 8.5L12 4 3 8.5v7L12 20l9-4.5v-7zM12 6.18L18.18 9 12 12.06 5.82 9 12 6.18zM5 10.62l6 2.97v6.16l-6-3v-6.13zm14 6.13l-6 3v-6.16l6-2.97v6.13z" opacity="0.6"/>' +
-      '<g transform="translate(13 11.5)">' +
-        '<circle cx="5" cy="5" r="5.2" fill="#fff"/>' +
-        '<path fill="none" stroke="#5a8dc5" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M5 2v5M2.7 5L5 7.3 7.3 5M2.3 8.3h5.4"/>' +
-      '</g>' +
+    '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>' +
+      '<path d="M7 10l5 5 5-5"/>' +
+      '<path d="M12 15V3"/>' +
     '</svg>',
-  // 二维码刷新：二维码 + 旋转箭头
+  // 二维码刷新：刷新箭头
   'asset.qr.regen':
-    '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">' +
-      '<path fill="currentColor" d="M3 3h7v7H3V3zm2 2v3h3V5H5zm9-2h7v7h-7V3zm2 2v3h3V5h-3zM3 14h7v7H3v-7zm2 2v3h3v-3H5zm12.5-3.5l1.7 1.7A4 4 0 1 1 14 18v-1.6a2.4 2.4 0 1 0 4-1.8l-1.7 1.7-1.4-1.4 3-3 3 3-1.4 1.4z"/>' +
+    '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<path d="M21 12a9 9 0 1 1-3-6.7"/>' +
+      '<path d="M21 4v5h-5"/>' +
     '</svg>',
-  // 上传附件：云朵向上箭头
+  // 上传附件：云朵向上箭头（cloud-upload）
   'file.upload':
-    '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">' +
-      '<path fill="currentColor" d="M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 0 0 0 14a6 6 0 0 0 6 6h13a5 5 0 0 0 .35-9.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/>' +
+    '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<path d="M17.5 19a4.5 4.5 0 1 0-1-8.9A6 6 0 0 0 5 13"/>' +
+      '<path d="M12 12v9"/>' +
+      '<path d="M8.5 15.5L12 12l3.5 3.5"/>' +
     '</svg>',
-  // 删除附件：文件 + 红色叉
+  // 删除附件：文件 + ✕
   'file.delete':
-    '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">' +
-      '<path fill="currentColor" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/>' +
-      '<path stroke="#c44545" stroke-width="1.8" stroke-linecap="round" fill="none" d="M9 13l5 5M14 13l-5 5"/>' +
+    '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>' +
+      '<path d="M14 2v6h6"/>' +
+      '<path d="M9.5 13.5l5 5M14.5 13.5l-5 5"/>' +
     '</svg>',
-  // 登录：门 + 向内箭头
+  // 登录：log-in
   login:
-    '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">' +
-      '<path fill="currentColor" d="M11 7L9.6 8.4l2.6 2.6H2v2h10.2l-2.6 2.6L11 17l5-5-5-5z"/>' +
-      '<path fill="currentColor" d="M14 3a2 2 0 0 1 2 2v3h-2V5h-2V3h2zm0 18h-2v-2h2v-3h2v3a2 2 0 0 1-2 2zm6-18a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4v-2h4V5h-4V3h4z" opacity="0.55"/>' +
+    '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>' +
+      '<path d="M10 17l5-5-5-5"/>' +
+      '<path d="M15 12H3"/>' +
     '</svg>',
-  // 登出：门 + 向外箭头
+  // 登出：log-out
   logout:
-    '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">' +
-      '<path fill="currentColor" d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5-5-5z"/>' +
-      '<path fill="currentColor" d="M4 5h6V3H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h6v-2H4V5z" opacity="0.55"/>' +
+    '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<path d="M9 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4"/>' +
+      '<path d="M16 17l5-5-5-5"/>' +
+      '<path d="M21 12H9"/>' +
     '</svg>',
 }
 
@@ -553,6 +584,22 @@ function dayLabel(t) {
   return `${d.getFullYear()}-${m}-${day}`
 }
 
+const collapsedGroups = ref(new Set())
+
+function isGroupCollapsed(date) {
+  return collapsedGroups.value.has(date)
+}
+
+function toggleGroup(date) {
+  const next = new Set(collapsedGroups.value)
+  if (next.has(date)) {
+    next.delete(date)
+  } else {
+    next.add(date)
+  }
+  collapsedGroups.value = next
+}
+
 const grouped = computed(() => {
   const out = []
   const map = new Map()
@@ -574,13 +621,17 @@ async function reload(reset = false) {
   if (reset) page.value = 1
   loading.value = true
   try {
-    const data = await listLogs({
-      page: page.value,
-      page_size: pageSize.value,
-      scope: scope.value,
-      action: actionFilter.value || undefined,
-      keyword: keyword.value || undefined,
-    })
+    const tasks = [
+      listLogs({
+        page: page.value,
+        page_size: pageSize.value,
+        scope: scope.value,
+        action: actionFilter.value || undefined,
+        keyword: keyword.value || undefined,
+      }),
+    ]
+    if (reset) tasks.push(reloadTypeStats())
+    const [data] = await Promise.all(tasks)
     items.value = data.items || []
     total.value = data.total || 0
     unread.value = data.unread || 0
@@ -620,8 +671,7 @@ async function onAiSearch() {
     keyword.value = p.keyword || ''
     if (p.action) actionFilter.value = p.action
     if (p.scope) scope.value = p.scope
-    page.value = 1
-    await reload(false)
+    await reload(true)
   } catch {
     reload(true)
   } finally {
@@ -698,6 +748,8 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  height: 100%;
+  min-height: 0;
   font-family: 'HarmonyOS Sans SC', 'Noto Sans SC', 'PingFang SC',
     'Microsoft YaHei UI', 'Microsoft YaHei', -apple-system,
     BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
@@ -725,6 +777,7 @@ onUnmounted(() => {
 
 /* ===================== 工具条（扁平、无卡片） ===================== */
 .msg-toolbar {
+  flex: 0 0 auto;
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
@@ -1074,21 +1127,27 @@ html.dark .type-select :deep(.el-select__wrapper.is-focused .el-select__caret) {
 
 /* ===================== 时间线 ===================== */
 .msg-timeline {
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   gap: 18px;
   max-width: 1280px;
   width: 100%;
+  min-height: 0;
   margin: 0 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+  scrollbar-gutter: stable;
 }
 /* -------- 日志类型占比卡片：圆环指标组 -------- */
 .type-ratio-card {
   position: relative;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   gap: 20px;
   padding: 8px 0 22px;
-  overflow: hidden;
   background: transparent;
   border: 0;
   border-radius: 0;
@@ -1146,8 +1205,8 @@ html.dark .type-select :deep(.el-select__wrapper.is-focused .el-select__caret) {
 }
 .ratio-metrics {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 40px 12px;
   align-items: center;
 }
 .ratio-metric {
@@ -1245,6 +1304,7 @@ html.dark .type-select :deep(.el-select__wrapper.is-focused .el-select__caret) {
 
 /* -------- 黑夜模式：保留原本的深色玻璃质感（已迁移到下方非 scoped 块） -------- */
 .day-group {
+  flex: 0 0 auto;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   justify-content: stretch;
@@ -1272,6 +1332,38 @@ html.dark .type-select :deep(.el-select__wrapper.is-focused .el-select__caret) {
     rgba(var(--theme-primary-rgb), 0.35),
     transparent
   );
+}
+.day-toggle {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  margin-left: 2px;
+  color: var(--theme-primary-deep, #8a7355);
+  background: transparent;
+  border: 1px solid rgba(var(--theme-primary-rgb), 0.28);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+.day-toggle:hover {
+  color: var(--theme-primary, #c5a47e);
+  background: rgba(var(--theme-primary-rgb), 0.10);
+  border-color: rgba(var(--theme-primary-rgb), 0.5);
+}
+.day-toggle:focus-visible {
+  outline: 2px solid rgba(var(--theme-primary-rgb), 0.45);
+  outline-offset: 2px;
+}
+.day-toggle svg {
+  display: block;
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.day-toggle.collapsed svg {
+  transform: rotate(-90deg);
 }
 .day-text {
   font-size: 12px;
@@ -1594,7 +1686,7 @@ html.dark .type-select :deep(.el-select__wrapper.is-focused .el-select__caret) {
 
 @media (max-width: 1180px) {
   .ratio-metrics {
-    grid-template-columns: repeat(3, minmax(150px, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
   .day-group {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1603,7 +1695,7 @@ html.dark .type-select :deep(.el-select__wrapper.is-focused .el-select__caret) {
 
 @media (max-width: 860px) {
   .ratio-metrics {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .day-group {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1648,6 +1740,7 @@ html.dark .type-select :deep(.el-select__wrapper.is-focused .el-select__caret) {
 }
 
 .msg-pager {
+  flex: 0 0 auto;
   display: flex;
   justify-content: flex-end;
   padding: 8px 4px 4px;
@@ -1656,9 +1749,6 @@ html.dark .type-select :deep(.el-select__wrapper.is-focused .el-select__caret) {
 /* 日志类型占比：暗色圆环视觉 */
 html.dark .messages-page .type-ratio-card::before {
   background: linear-gradient(90deg, transparent, rgba(var(--theme-primary-rgb), 0.18), transparent);
-}
-html.dark .messages-page .ratio-title {
-  color: rgba(246, 238, 220, 0.9);
 }
 html.dark .messages-page .ratio-total,
 html.dark .messages-page .ratio-label {
@@ -1710,13 +1800,191 @@ html.dark .messages-page .unread-badge {
   background: rgba(247, 189, 85, 0.12);
   color: #f6c45f;
 }
-.log-detail-dialog .el-dialog {
+/* 顶部类型筛选下拉菜单：与资产表单 el-select 行为一致 */
+.messages-type-select-popper.el-popper {
+  border: 0;
+  border-radius: 6px;
+}
+html[data-mode='light'] .messages-type-select-popper.el-popper,
+html:not([data-mode='dark']) .messages-type-select-popper.el-popper {
+  background: #fff;
+  box-shadow: 0 10px 28px rgba(94, 74, 46, 0.16);
+}
+.messages-type-select-popper .el-popper__arrow::before {
+  border-color: transparent;
+  box-shadow: none;
+}
+html[data-mode='light'] .messages-type-select-popper .el-popper__arrow::before,
+html:not([data-mode='dark']) .messages-type-select-popper .el-popper__arrow::before {
+  background: #fff;
+}
+.messages-type-select-popper .el-select-dropdown {
+  border-radius: 6px;
+}
+.messages-type-select-popper .el-select-dropdown__list {
+  padding: 14px 0;
+}
+.messages-type-select-popper .el-select-dropdown__item {
+  height: 34px;
+  line-height: 34px;
+  padding: 0 8px;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}
+html[data-mode='light'] .messages-type-select-popper .el-select-dropdown__item,
+html:not([data-mode='dark']) .messages-type-select-popper .el-select-dropdown__item {
+  color: #6f7283;
+}
+.messages-type-select-popper .el-select-dropdown__item.is-hovering,
+.messages-type-select-popper .el-select-dropdown__item:hover {
+  background: rgba(var(--theme-primary-rgb), 0.08);
+  color: var(--theme-text-hover, #5e4a2e);
+}
+.messages-type-select-popper .el-select-dropdown__item.is-selected {
+  background: transparent;
+  color: var(--theme-primary-deep, #8a7355);
+  font-weight: 700;
+}
+html[data-mode='dark'] .messages-type-select-popper.el-popper {
+  background: var(--theme-surface);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.42);
+}
+html[data-mode='dark'] .messages-type-select-popper .el-popper__arrow::before {
+  background: var(--theme-surface);
+}
+html[data-mode='dark'] .messages-type-select-popper .el-select-dropdown__item {
+  color: var(--text-secondary);
+}
+html[data-mode='dark'] .messages-type-select-popper .el-select-dropdown__item.is-hovering,
+html[data-mode='dark'] .messages-type-select-popper .el-select-dropdown__item:hover {
+  background: var(--bg-hover);
+  color: var(--theme-text-hover);
+}
+html[data-mode='dark'] .messages-type-select-popper .el-select-dropdown__item.is-selected {
+  background: transparent;
+  color: var(--theme-primary-deep);
+  font-weight: 700;
+}
+/* ============================================================
+   Messages 页面：dark 模式下根容器使用页面底色
+   ============================================================ */
+html.dark .messages-page {
+  color: var(--text-primary) !important;
+}
+html.dark .messages-page .form-control input {
+  border-bottom-color: var(--theme-primary, #c5a47e) !important;
+  color: var(--theme-primary) !important;
+}
+html.dark .messages-page .form-control input:focus,
+html.dark .messages-page .form-control input:valid,
+html.dark .messages-page .form-control.is-filled input {
+  border-bottom-color: var(--theme-primary) !important;
+}
+html.dark .messages-page .form-control label span {
+  color: rgba(255, 255, 255, 0.55) !important;
+}
+html.dark .messages-page .form-control input:focus + label span,
+html.dark .messages-page .form-control input:valid + label span,
+html.dark .messages-page .form-control.is-filled label span {
+  color: var(--theme-primary) !important;
+}
+
+/* ============================================================
+   Messages 列表 / 卡片 / 标签 暗色覆盖
+   ============================================================ */
+html.dark .messages-page .scope-btn.active,
+html.dark .messages-page .actor,
+html.dark .messages-page .msg-summary {
+  color: var(--text-primary) !important;
+}
+html.dark .messages-page .meta-time {
+  color: var(--text-muted) !important;
+}
+html.dark .messages-page .msg-card {
+  background:
+    radial-gradient(circle at 12% 10%, rgba(var(--theme-primary-rgb), 0.20), transparent 36%),
+    radial-gradient(circle at 100% 100%, rgba(90, 110, 190, 0.12), transparent 42%),
+    linear-gradient(145deg, rgba(31, 33, 48, 0.86), rgba(13, 15, 25, 0.78)) !important;
+  border-color: rgba(255, 255, 255, 0.10) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 14px 34px rgba(0, 0, 0, 0.34) !important;
+}
+html.dark .messages-page .msg-card:hover {
+  border-color: rgba(var(--theme-primary-rgb), 0.52) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 18px 42px rgba(0, 0, 0, 0.44),
+    0 0 28px rgba(var(--theme-primary-rgb), 0.22) !important;
+}
+html.dark .messages-page .msg-card.unread {
+  background:
+    radial-gradient(circle at 12% 10%, rgba(var(--theme-primary-rgb), 0.38), transparent 38%),
+    radial-gradient(circle at 100% 100%, rgba(247, 189, 85, 0.14), transparent 40%),
+    linear-gradient(145deg, rgba(49, 39, 28, 0.88), rgba(15, 17, 26, 0.78)) !important;
+  border-color: rgba(var(--theme-primary-rgb), 0.68) !important;
+  /* box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 16px 38px rgba(0, 0, 0, 0.44),
+    0 0 32px rgba(var(--theme-primary-rgb), 0.34) !important; */
+}
+.messages-page .changes {
+  background: var(--theme-surface-muted) !important;
+  border-left-color: rgba(var(--theme-primary-rgb), 0.6) !important;
+}
+.messages-page .ch-before {
+  color: #ff8a8a !important;
+  background: rgba(245, 108, 108, 0.16) !important;
+}
+.messages-page .ch-after {
+  color: #6fd49b !important;
+  background: rgba(70, 167, 109, 0.18) !important;
+}
+
+/* action-tag：暗色下做反转，色块用半透明带主色，文字用更亮的同色 */
+.messages-page .action-tag {
+  background: rgba(var(--theme-primary-rgb), 0.18) !important;
+  color: var(--theme-primary) !important;
+}
+.messages-page .tag-asset-create {
+  background: rgba(44, 122, 94, 0.22) !important;
+  color: #6fd49b !important;
+}
+.messages-page .tag-asset-update {
+  background: rgba(176, 138, 82, 0.22) !important;
+  color: #e0b974 !important;
+}
+.messages-page .tag-asset-delete,
+.messages-page .tag-file-delete {
+  background: rgba(196, 69, 69, 0.22) !important;
+  color: #ff8a8a !important;
+}
+.messages-page .tag-asset-qr-regen,
+.messages-page .tag-file-upload {
+  background: rgba(79, 143, 216, 0.22) !important;
+  color: #7fb6ee !important;
+}
+.messages-page .tag-login,
+.messages-page .tag-logout {
+  background: rgba(155, 110, 200, 0.22) !important;
+  color: #c9a8e6 !important;
+}
+
+</style>
+
+<!-- 非 scoped：日志详情弹窗（el-dialog 通过 append-to-body 被 teleport 到 body 下，必须用全局样式） -->
+<style>
+/* ============================================================
+   .log-detail-dialog —— 全局样式
+   ============================================================ */
+.log-detail-dialog.el-dialog {
   position: relative;
   display: flex;
   flex-direction: column;
   max-width: calc(100vw - 32px);
   max-height: calc(100vh - 36px);
-  border: 1px solid rgba(var(--theme-primary-rgb), 0.38);
+  border: 1px solid transparent;
   border-radius: 18px;
   overflow: hidden;
   background: var(--bg-card);
@@ -1724,28 +1992,34 @@ html.dark .messages-page .unread-badge {
   backdrop-filter: blur(22px) saturate(130%);
   -webkit-backdrop-filter: blur(22px) saturate(130%);
 }
-.log-detail-dialog .el-dialog::before,
-.log-detail-dialog .el-dialog::after {
+/* 一圈渐变描边：左上亮、右下暗，金属质感 */
+.log-detail-dialog.el-dialog::before {
   content: '';
   position: absolute;
   pointer-events: none;
-}
-.log-detail-dialog .el-dialog::before {
   inset: 0;
   border-radius: inherit;
+  padding: 1px;
   background:
-    linear-gradient(90deg, transparent 4%, rgba(var(--theme-primary-rgb), 0.5) 50%, transparent 96%) top / 100% 1px no-repeat,
-    linear-gradient(90deg, transparent 4%, rgba(var(--theme-primary-rgb), 0.34) 50%, transparent 96%) bottom / 100% 1px no-repeat;
-  opacity: 0.9;
-}
-.log-detail-dialog .el-dialog::after {
-  inset: 14px;
-  border: 1px solid rgba(var(--theme-primary-rgb), 0.08);
-  border-radius: 14px;
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--theme-primary, #c5a47e) 95%, #fff5d8) 0%,
+      rgba(var(--theme-primary-rgb), 0.65) 22%,
+      rgba(var(--theme-primary-rgb), 0.18) 48%,
+      rgba(var(--theme-primary-rgb), 0.42) 72%,
+      color-mix(in srgb, var(--theme-primary, #c5a47e) 90%, #ffe6a8) 100%
+    );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+          mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
 }
 .log-detail-dialog .el-dialog__header {
   flex-shrink: 0;
-  padding: 26px 28px 18px;
   margin-right: 0;
   background: transparent;
   border-bottom: 0;
@@ -1754,7 +2028,6 @@ html.dark .messages-page .unread-badge {
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  padding: 0 28px 28px;
 }
 .log-detail-dialog .el-dialog__headerbtn {
   top: 24px;
@@ -2031,7 +2304,7 @@ html.dark .messages-page .unread-badge {
   border-radius: 10px;
 }
 
-/* ===================== 日志详情弹窗 进入动效 ===================== */
+/* 进入动效 */
 .log-detail-dialog {
   animation: log-dialog-pop-in 0.36s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -2056,7 +2329,6 @@ html.dark .messages-page .unread-badge {
   to   { opacity: 1; }
 }
 
-/* 字段变更行：进入时上浮淡入 */
 .log-detail-dialog .dlg-change-row {
   animation: change-row-fade 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -2071,31 +2343,7 @@ html.dark .messages-page .unread-badge {
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* ===================== 黑夜模式：日志详情弹窗重构 ===================== */
-html.dark .log-detail-dialog .el-dialog {
-  --log-dialog-border: rgba(var(--theme-primary-rgb), 0.62);
-  --log-dialog-glow: rgba(var(--theme-primary-rgb), 0.26);
-  --log-dialog-panel: rgba(11, 16, 28, 0.76);
-  --log-dialog-panel-strong: rgba(15, 21, 35, 0.92);
-  background:
-    radial-gradient(circle at 16% 10%, rgba(var(--theme-primary-rgb), 0.2), transparent 34%),
-    radial-gradient(circle at 88% 92%, rgba(var(--theme-primary-rgb), 0.14), transparent 32%),
-    linear-gradient(145deg, rgba(16, 20, 32, 0.94), rgba(5, 9, 18, 0.96));
-  border-color: var(--log-dialog-border);
-  box-shadow:
-    0 28px 80px rgba(0, 0, 0, 0.66),
-    0 0 0 1px rgba(var(--theme-primary-rgb), 0.12),
-    0 0 38px var(--log-dialog-glow),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
-}
-html.dark .log-detail-dialog .el-dialog::before {
-  background:
-    linear-gradient(90deg, transparent 4%, rgba(var(--theme-primary-rgb), 0.72) 50%, transparent 96%) top / 100% 1px no-repeat,
-    linear-gradient(90deg, transparent 4%, rgba(var(--theme-primary-rgb), 0.5) 50%, transparent 96%) bottom / 100% 1px no-repeat;
-}
-html.dark .log-detail-dialog .el-dialog::after {
-  border-color: rgba(var(--theme-primary-rgb), 0.08);
-}
+/* ===================== 黑夜模式 ===================== */
 html.dark .log-detail-dialog .el-dialog__close {
   color: rgba(245, 240, 230, 0.78);
 }
@@ -2122,7 +2370,6 @@ html.dark .log-detail-dialog .dlg-actor {
 }
 html.dark .log-detail-dialog .dlg-summary {
   color: #f7f3ea;
-  text-shadow: 0 0 18px rgba(var(--theme-primary-rgb), 0.14);
 }
 html.dark .log-detail-dialog .dlg-title-wrap::after {
   color: rgba(244, 238, 226, 0.58);
@@ -2150,13 +2397,9 @@ html.dark .log-detail-dialog .dlg-meta-label::before {
   border: 0;
   background: transparent;
   box-shadow: none;
-  filter: drop-shadow(0 0 8px rgba(var(--theme-primary-rgb), 0.26));
 }
 html.dark .log-detail-dialog .dlg-meta-value {
   color: #f3efe7;
-}
-html.dark .log-detail-dialog .dlg-section-title {
-  text-shadow: 0 0 12px rgba(var(--theme-primary-rgb), 0.2);
 }
 html.dark .log-detail-dialog .dlg-section-count {
   color: #fff6df;
@@ -2205,7 +2448,6 @@ html.dark .log-detail-dialog .dlg-ch-after {
 }
 html.dark .log-detail-dialog .dlg-changes::-webkit-scrollbar-thumb {
   background: rgba(var(--theme-primary-rgb), 0.58);
-  box-shadow: 0 0 10px rgba(var(--theme-primary-rgb), 0.22);
 }
 html.dark .el-overlay:has(.log-detail-dialog) {
   background:
@@ -2214,11 +2456,11 @@ html.dark .el-overlay:has(.log-detail-dialog) {
 }
 
 @media (max-width: 760px) {
-  .log-detail-dialog .el-dialog {
+  .log-detail-dialog.el-dialog {
     max-height: calc(100vh - 20px);
   }
   .log-detail-dialog .el-dialog__header,
-  .log-detail-dialog .el-dialog__body{
+  .log-detail-dialog .el-dialog__body {
     padding-left: 22px;
     padding-right: 22px;
   }
@@ -2255,176 +2497,4 @@ html.dark .el-overlay:has(.log-detail-dialog) {
     padding: 10px 14px;
   }
 }
-
-/* 顶部类型筛选下拉菜单：与资产表单 el-select 行为一致 */
-.messages-type-select-popper.el-popper {
-  border: 0;
-  border-radius: 6px;
-}
-html[data-mode='light'] .messages-type-select-popper.el-popper,
-html:not([data-mode='dark']) .messages-type-select-popper.el-popper {
-  background: #fff;
-  box-shadow: 0 10px 28px rgba(94, 74, 46, 0.16);
-}
-.messages-type-select-popper .el-popper__arrow::before {
-  border-color: transparent;
-  box-shadow: none;
-}
-html[data-mode='light'] .messages-type-select-popper .el-popper__arrow::before,
-html:not([data-mode='dark']) .messages-type-select-popper .el-popper__arrow::before {
-  background: #fff;
-}
-.messages-type-select-popper .el-select-dropdown {
-  border-radius: 6px;
-}
-.messages-type-select-popper .el-select-dropdown__list {
-  padding: 14px 0;
-}
-.messages-type-select-popper .el-select-dropdown__item {
-  height: 34px;
-  line-height: 34px;
-  padding: 0 8px;
-  font-size: 15px;
-  font-weight: 500;
-  letter-spacing: 0.3px;
-}
-html[data-mode='light'] .messages-type-select-popper .el-select-dropdown__item,
-html:not([data-mode='dark']) .messages-type-select-popper .el-select-dropdown__item {
-  color: #6f7283;
-}
-.messages-type-select-popper .el-select-dropdown__item.is-hovering,
-.messages-type-select-popper .el-select-dropdown__item:hover {
-  background: rgba(var(--theme-primary-rgb), 0.08);
-  color: var(--theme-text-hover, #5e4a2e);
-}
-.messages-type-select-popper .el-select-dropdown__item.is-selected {
-  background: transparent;
-  color: var(--theme-primary-deep, #8a7355);
-  font-weight: 700;
-}
-html[data-mode='dark'] .messages-type-select-popper.el-popper {
-  background: var(--theme-surface);
-  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.42);
-}
-html[data-mode='dark'] .messages-type-select-popper .el-popper__arrow::before {
-  background: var(--theme-surface);
-}
-html[data-mode='dark'] .messages-type-select-popper .el-select-dropdown__item {
-  color: var(--text-secondary);
-}
-html[data-mode='dark'] .messages-type-select-popper .el-select-dropdown__item.is-hovering,
-html[data-mode='dark'] .messages-type-select-popper .el-select-dropdown__item:hover {
-  background: var(--bg-hover);
-  color: var(--theme-text-hover);
-}
-html[data-mode='dark'] .messages-type-select-popper .el-select-dropdown__item.is-selected {
-  background: transparent;
-  color: var(--theme-primary-deep);
-  font-weight: 700;
-}
-/* ============================================================
-   Messages 页面：dark 模式下根容器使用页面底色
-   ============================================================ */
-html.dark .messages-page {
-  color: var(--text-primary) !important;
-}
-html.dark .messages-page .form-control input {
-  border-bottom-color: var(--theme-primary, #c5a47e) !important;
-  color: var(--theme-primary) !important;
-}
-html.dark .messages-page .form-control input:focus,
-html.dark .messages-page .form-control input:valid,
-html.dark .messages-page .form-control.is-filled input {
-  border-bottom-color: var(--theme-primary) !important;
-}
-html.dark .messages-page .form-control label span {
-  color: rgba(255, 255, 255, 0.55) !important;
-}
-html.dark .messages-page .form-control input:focus + label span,
-html.dark .messages-page .form-control input:valid + label span,
-html.dark .messages-page .form-control.is-filled label span {
-  color: var(--theme-primary) !important;
-}
-
-/* ============================================================
-   Messages 列表 / 卡片 / 标签 暗色覆盖
-   ============================================================ */
-html.dark .messages-page .scope-btn.active,
-html.dark .messages-page .actor,
-html.dark .messages-page .msg-summary {
-  color: var(--text-primary) !important;
-}
-html.dark .messages-page .meta-time {
-  color: var(--text-muted) !important;
-}
-html.dark .messages-page .msg-card {
-  background:
-    radial-gradient(circle at 12% 10%, rgba(var(--theme-primary-rgb), 0.20), transparent 36%),
-    radial-gradient(circle at 100% 100%, rgba(90, 110, 190, 0.12), transparent 42%),
-    linear-gradient(145deg, rgba(31, 33, 48, 0.86), rgba(13, 15, 25, 0.78)) !important;
-  border-color: rgba(255, 255, 255, 0.10) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 14px 34px rgba(0, 0, 0, 0.34) !important;
-}
-html.dark .messages-page .msg-card:hover {
-  border-color: rgba(var(--theme-primary-rgb), 0.52) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    0 18px 42px rgba(0, 0, 0, 0.44),
-    0 0 28px rgba(var(--theme-primary-rgb), 0.22) !important;
-}
-html.dark .messages-page .msg-card.unread {
-  background:
-    radial-gradient(circle at 12% 10%, rgba(var(--theme-primary-rgb), 0.38), transparent 38%),
-    radial-gradient(circle at 100% 100%, rgba(247, 189, 85, 0.14), transparent 40%),
-    linear-gradient(145deg, rgba(49, 39, 28, 0.88), rgba(15, 17, 26, 0.78)) !important;
-  border-color: rgba(var(--theme-primary-rgb), 0.68) !important;
-  /* box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    0 16px 38px rgba(0, 0, 0, 0.44),
-    0 0 32px rgba(var(--theme-primary-rgb), 0.34) !important; */
-}
-.messages-page .changes {
-  background: var(--theme-surface-muted) !important;
-  border-left-color: rgba(var(--theme-primary-rgb), 0.6) !important;
-}
-.messages-page .ch-before {
-  color: #ff8a8a !important;
-  background: rgba(245, 108, 108, 0.16) !important;
-}
-.messages-page .ch-after {
-  color: #6fd49b !important;
-  background: rgba(70, 167, 109, 0.18) !important;
-}
-
-/* action-tag：暗色下做反转，色块用半透明带主色，文字用更亮的同色 */
-.messages-page .action-tag {
-  background: rgba(var(--theme-primary-rgb), 0.18) !important;
-  color: var(--theme-primary) !important;
-}
-.messages-page .tag-asset-create {
-  background: rgba(44, 122, 94, 0.22) !important;
-  color: #6fd49b !important;
-}
-.messages-page .tag-asset-update {
-  background: rgba(176, 138, 82, 0.22) !important;
-  color: #e0b974 !important;
-}
-.messages-page .tag-asset-delete,
-.messages-page .tag-file-delete {
-  background: rgba(196, 69, 69, 0.22) !important;
-  color: #ff8a8a !important;
-}
-.messages-page .tag-asset-qr-regen,
-.messages-page .tag-file-upload {
-  background: rgba(79, 143, 216, 0.22) !important;
-  color: #7fb6ee !important;
-}
-.messages-page .tag-login,
-.messages-page .tag-logout {
-  background: rgba(155, 110, 200, 0.22) !important;
-  color: #c9a8e6 !important;
-}
-
 </style>

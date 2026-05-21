@@ -255,6 +255,44 @@ def list_logs(
     return total, unread, items
 
 
+def action_stats(
+    db: Session,
+    *,
+    scope: str = "all",
+    current_user: Optional[models.User] = None,
+    keyword: Optional[str] = None,
+) -> tuple[int, list[dict[str, Any]]]:
+    """按当前筛选条件，统计每个 action 的日志条数。
+
+    与 list_logs 共用过滤口径（scope / keyword），但忽略 action 过滤本身和分页，
+    返回 (total, [{action, count}, ...])，前端据此渲染"日志类型占比"卡片，
+    避免因翻页只能看到当前页的局部统计。
+    """
+    stmt = select(models.ActivityLog.action, func.count(models.ActivityLog.id))
+    if scope == "mine" and current_user:
+        stmt = stmt.where(models.ActivityLog.actor == current_user.username)
+    if keyword:
+        like = f"%{keyword}%"
+        stmt = stmt.where(
+            or_(
+                models.ActivityLog.summary.like(like),
+                models.ActivityLog.target_label.like(like),
+                models.ActivityLog.actor.like(like),
+                models.ActivityLog.actor_nickname.like(like),
+            )
+        )
+    stmt = stmt.group_by(models.ActivityLog.action)
+
+    rows = db.execute(stmt).all()
+    items = [
+        {"action": action or "", "count": int(count or 0)}
+        for action, count in rows
+    ]
+    items.sort(key=lambda x: x["count"], reverse=True)
+    total = sum(item["count"] for item in items)
+    return total, items
+
+
 def unread_count(db: Session, current_user: Optional[models.User]) -> int:
     """计算当前用户的未读消息数。
 
