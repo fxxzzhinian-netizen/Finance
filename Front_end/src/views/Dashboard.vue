@@ -19,7 +19,7 @@ import AssetsTable from '../components/AssetsTable.vue'
   letter-spacing: 0.3px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: var(--bg-card, #ffffff);
+  /* background: var(--bg-card, #ffffff); */
   margin: -20px -24px;
   padding: 20px 24px;
   min-height: calc(100% + 40px);
@@ -31,5 +31,11 @@ import AssetsTable from '../components/AssetsTable.vue'
 .dashboard :deep(.el-button),
 .dashboard :deep(.el-form-item__label) {
   font-family: inherit;
+}
+</style>
+
+<style>
+html.dark .dashboard {
+  color: var(--text-primary) !important;
 }
 </style>

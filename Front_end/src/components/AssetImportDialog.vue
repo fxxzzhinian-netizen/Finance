@@ -1,4 +1,5 @@
 <template>
+  <div class="asset-import-dialog-root" style="display: contents">
   <el-dialog
     v-model="visible"
     width="80vw"
@@ -497,6 +498,7 @@
       </div>
     </template>
   </el-dialog>
+  </div>
 </template>
 
 <script setup>
@@ -2080,5 +2082,63 @@ function onClosed() {
 .el-dialog.asset-import-dialog > .el-dialog__footer {
   flex: 0 0 auto;
   padding: 8px 24px 16px !important;
+}
+html.dark .el-dialog.asset-import-dialog,
+html.dark .el-dialog.fix-field-dialog {
+  background: var(--bg-card) !important;
+  border-color: var(--theme-border) !important;
+  color: var(--text-primary) !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55) !important;
+}
+html.dark .el-dialog.asset-import-dialog > .el-dialog__header,
+html.dark .el-dialog.asset-import-dialog > .el-dialog__body,
+html.dark .el-dialog.asset-import-dialog > .el-dialog__footer,
+html.dark .el-dialog.fix-field-dialog > .el-dialog__header,
+html.dark .el-dialog.fix-field-dialog > .el-dialog__body,
+html.dark .el-dialog.fix-field-dialog > .el-dialog__footer {
+  background: var(--bg-card) !important;
+}
+html.dark .asset-import-dialog .preview-summary,
+html.dark .asset-import-dialog .preview-table,
+html.dark .asset-import-dialog .upload-dropzone .el-upload-dragger,
+html.dark .asset-import-dialog .dropzone-inner {
+  background: var(--bg-card) !important;
+  color: var(--text-primary) !important;
+}
+html.dark .asset-import-dialog .preview-summary {
+  background: var(--theme-surface-subtle) !important;
+}
+html.dark .asset-import-dialog .preview-table .el-table,
+html.dark .asset-import-dialog .preview-table .el-table__inner-wrapper,
+html.dark .asset-import-dialog .preview-table .el-table tr,
+html.dark .asset-import-dialog .preview-table .el-table th.el-table__cell,
+html.dark .asset-import-dialog .preview-table .el-table td.el-table__cell {
+  background: var(--bg-card) !important;
+  color: var(--text-primary) !important;
+}
+html.dark .asset-import-dialog .preview-table thead th {
+  background: var(--theme-surface-subtle) !important;
+  color: var(--theme-primary) !important;
+}
+html.dark .asset-import-dialog .preview-table .row-ok {
+  background: var(--bg-card) !important;
+}
+html.dark .asset-import-dialog .preview-table .row-warning {
+  background: rgba(244, 163, 64, 0.16) !important;
+}
+html.dark .asset-import-dialog .preview-table .row-error {
+  background: rgba(239, 102, 91, 0.16) !important;
+}
+html.dark .asset-import-dialog .mapping-table .el-table__row:hover > td.el-table__cell {
+  background: var(--bg-hover) !important;
+}
+html.dark .asset-import-dialog .mono,
+html.dark .asset-import-dialog .hp-cell {
+  color: var(--text-primary);
+}
+html.dark .fix-field-dialog .fix-issue {
+  background: var(--theme-surface-subtle);
+  border-color: var(--theme-border);
+  color: var(--text-primary);
 }
 </style>

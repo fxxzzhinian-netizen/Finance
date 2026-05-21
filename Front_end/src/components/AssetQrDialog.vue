@@ -827,6 +827,59 @@ watch(
   border-color: var(--theme-text-hover, #6e5a40);
   color: #fff;
 }
+html.dark .asset-qr-dialog .el-dialog {
+  background: var(--bg-card) !important;
+  border-color: var(--theme-border) !important;
+  color: var(--text-primary) !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55) !important;
+}
+html.dark .asset-qr-dialog .el-dialog__header,
+html.dark .asset-qr-dialog .el-dialog__body,
+html.dark .asset-qr-dialog .el-dialog__footer {
+  background: var(--bg-card) !important;
+}
+html.dark .asset-qr-dialog .el-dialog__footer {
+  border-top-color: var(--theme-table-line) !important;
+}
+html.dark .asset-qr-dialog .qr-header-title {
+  color: var(--text-primary) !important;
+}
+html.dark .asset-qr-dialog .qr-header-icon,
+html.dark .asset-qr-dialog .qr-mode-indicator,
+html.dark .asset-qr-dialog .qr-tag,
+html.dark .asset-qr-dialog .qr-status-tag {
+  background: var(--theme-surface) !important;
+}
+html.dark .asset-qr-dialog .btn-ghost {
+  background: var(--theme-surface) !important;
+  border-color: var(--theme-border) !important;
+  color: var(--text-primary) !important;
+}
+html.dark .asset-qr-dialog .btn-ghost:not(:disabled):hover {
+  background: var(--theme-surface-hover) !important;
+  border-color: var(--theme-border-strong) !important;
+  color: var(--theme-primary) !important;
+}
+html.dark .asset-qr-dialog .qr-wrap,
+html.dark .asset-qr-dialog .qr-img-box,
+html.dark .asset-qr-dialog .qr-info {
+  background: var(--bg-card) !important;
+  color: var(--text-primary) !important;
+}
+html.dark .asset-qr-dialog .value,
+html.dark .asset-qr-dialog .qr-placeholder {
+  color: var(--text-primary) !important;
+}
+html.dark .asset-qr-dialog .qr-error-retry {
+  background: var(--theme-surface) !important;
+  border-color: var(--theme-border) !important;
+  color: var(--text-primary) !important;
+}
+html.dark .asset-qr-dialog .qr-error-retry:hover {
+  background: var(--theme-surface-hover) !important;
+  border-color: var(--theme-border-strong) !important;
+  color: var(--theme-primary) !important;
+}
 
 /* 标签卡模式下窄屏：右侧字段更紧凑 */
 @media (max-width: 720px) {

@@ -364,7 +364,6 @@ onMounted(load)
 .class-badge[data-class="OA"]  { color: #2c7a5e; border-color: #4ea886; }
 .class-badge[data-class="FA"]  { color: #8a4b1f; border-color: #d68a4a; }
 .class-badge[data-class="VE"]  { color: #6b3a8a; border-color: #9466b8; }
-
 /* 状态 pill */
 .status-pill {
   display: inline-flex;
@@ -562,5 +561,48 @@ onMounted(load)
   .brand-logo {
     image-rendering: -webkit-optimize-contrast;
   }
+}
+</style>
+
+<style>
+html.dark .page {
+  color: var(--text-primary);
+}
+html.dark .page .card,
+html.dark .page .state-box,
+html.dark .page .section,
+html.dark .page .info-item {
+  background: var(--bg-card) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--theme-border) !important;
+}
+html.dark .page .banner {
+  background: var(--theme-surface-subtle) !important;
+  border-color: var(--theme-border) !important;
+}
+html.dark .page .brand-title,
+html.dark .page .asset-title,
+html.dark .page .ii-value {
+  color: var(--text-primary) !important;
+}
+html.dark .page .class-badge,
+html.dark .page .status-pill {
+  background: var(--theme-surface) !important;
+}
+html.dark .page .class-badge[data-class="IT"] {
+  color: #7fb6ee !important;
+  border-color: #4a8bd6 !important;
+}
+html.dark .page .class-badge[data-class="OA"] {
+  color: #6fd49b !important;
+  border-color: #4ea886 !important;
+}
+html.dark .page .class-badge[data-class="FA"] {
+  color: #ffb37a !important;
+  border-color: #d68a4a !important;
+}
+html.dark .page .class-badge[data-class="VE"] {
+  color: #c9a8e6 !important;
+  border-color: #9466b8 !important;
 }
 </style>

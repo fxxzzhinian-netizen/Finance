@@ -2042,6 +2042,143 @@ html.dark .svg-icon-btn.qr:hover svg { fill: #f0f0f0; }
 .files-empty svg {
   color: var(--theme-primary-light-3, #d4b89a);
 }
+
+</style>
+
+<style>
+html.dark .assets-table {
+  color: var(--text-primary);
+}
+html.dark .assets-table .filter-bar,
+html.dark .assets-table .filter-row,
+html.dark .assets-table .table-card,
+html.dark .assets-table .table-card.el-card,
+html.dark .assets-table .table-card .el-card__body {
+  background: transparent !important;
+}
+html.dark .assets-table .form-control input {
+  border-bottom-color: var(--theme-primary, #c5a47e) !important;
+  color: var(--theme-primary) !important;
+}
+html.dark .assets-table .form-control input:focus,
+html.dark .assets-table .form-control input:valid,
+html.dark .assets-table .form-control.is-filled input {
+  border-bottom-color: var(--theme-primary) !important;
+}
+html.dark .assets-table .form-control label span {
+  color: rgba(255, 255, 255, 0.55) !important;
+}
+html.dark .assets-table .form-control input:focus + label span,
+html.dark .assets-table .form-control input:valid + label span,
+html.dark .assets-table .form-control.is-filled label span {
+  color: var(--theme-primary) !important;
+}
+html.dark .assets-table .class-badge,
+html.dark .assets-table .status-tag {
+  background: var(--theme-surface) !important;
+}
+html.dark .assets-table .class-badge[data-class="IT"] {
+  color: #7fb6ee !important;
+  border-color: #4a8bd6 !important;
+}
+html.dark .assets-table .class-badge[data-class="OA"] {
+  color: #6fd49b !important;
+  border-color: #4ea886 !important;
+}
+html.dark .assets-table .class-badge[data-class="FA"] {
+  color: #ffb37a !important;
+  border-color: #d68a4a !important;
+}
+html.dark .assets-table .class-badge[data-class="VE"] {
+  color: #c9a8e6 !important;
+  border-color: #9466b8 !important;
+}
+html.dark .assets-table .gold-table {
+  border-color: var(--theme-border) !important;
+}
+html.dark .assets-table .gold-table .gold-header-cell,
+html.dark .assets-table .gold-table .el-table__fixed-header-wrapper th.gold-header-cell,
+html.dark .assets-table .gold-table .el-table__fixed-right .gold-header-cell,
+html.dark .assets-table .gold-table .el-table__fixed .gold-header-cell {
+  background-color: var(--theme-surface-subtle) !important;
+  color: var(--theme-primary) !important;
+  border-bottom-color: rgba(var(--theme-primary-rgb), 0.4) !important;
+}
+html.dark .assets-table .gold-table .gold-header-cell .cell {
+  color: var(--theme-primary) !important;
+}
+html.dark .assets-table .gold-table .el-table__row td {
+  border-bottom-color: var(--theme-table-line) !important;
+}
+html.dark .assets-table .gold-table,
+html.dark .assets-table .gold-table .el-table__inner-wrapper,
+html.dark .assets-table .gold-table .el-table__header-wrapper,
+html.dark .assets-table .gold-table .el-table__body-wrapper,
+html.dark .assets-table .gold-table .el-scrollbar,
+html.dark .assets-table .gold-table .el-scrollbar__view {
+  --asset-table-hover-bg: var(--theme-surface-muted);
+  --asset-table-hover-bg: color-mix(in srgb, var(--bg-page) 84%, rgb(var(--theme-primary-rgb)) 16%);
+  background: var(--bg-page) !important;
+}
+html.dark .assets-table .gold-table .el-table__header-wrapper thead tr,
+html.dark .assets-table .gold-table tr,
+html.dark .assets-table .gold-table th.el-table__cell,
+html.dark .assets-table .gold-table td.el-table__cell,
+html.dark .assets-table .gold-table.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
+  background: var(--bg-page) !important;
+  background-color: var(--bg-page) !important;
+}
+html.dark .assets-table .gold-table .el-table__body tr:hover > td.el-table__cell {
+  background: var(--asset-table-hover-bg) !important;
+  background-color: var(--asset-table-hover-bg) !important;
+}
+html.dark .assets-table .gold-table td.el-table-fixed-column--left,
+html.dark .assets-table .gold-table td.el-table-fixed-column--right,
+html.dark .assets-table .gold-table .el-table__fixed td.el-table__cell,
+html.dark .assets-table .gold-table .el-table__fixed-right td.el-table__cell {
+  background: var(--bg-page) !important;
+  background-color: var(--bg-page) !important;
+}
+html.dark .assets-table .gold-table tbody tr:hover > td.el-table-fixed-column--left,
+html.dark .assets-table .gold-table tbody tr:hover > td.el-table-fixed-column--right,
+html.dark .assets-table .gold-table .el-table__fixed tbody tr:hover > td.el-table__cell,
+html.dark .assets-table .gold-table .el-table__fixed-right tbody tr:hover > td.el-table__cell {
+  background: var(--asset-table-hover-bg) !important;
+  background-color: var(--asset-table-hover-bg) !important;
+}
+html.dark .assets-table .gold-table td.el-table-fixed-column--left::before,
+html.dark .assets-table .gold-table td.el-table-fixed-column--right::before {
+  background: transparent !important;
+  pointer-events: none;
+}
+html.dark .asset-edit-dialog .el-dialog {
+  background: var(--bg-card) !important;
+  border-color: var(--theme-border) !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55), 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+}
+html.dark .asset-edit-dialog .el-dialog__header,
+html.dark .asset-edit-dialog .el-dialog__footer {
+  background: var(--bg-card) !important;
+  border-top-color: var(--theme-table-line) !important;
+}
+html.dark .asset-edit-dialog .el-dialog__close {
+  color: var(--text-secondary) !important;
+}
+html.dark .asset-edit-dialog .el-input__wrapper,
+html.dark .asset-edit-dialog .el-textarea__inner {
+  background: var(--theme-surface-subtle) !important;
+  color: var(--text-primary) !important;
+}
+html.dark .asset-edit-dialog .el-input__inner,
+html.dark .asset-edit-dialog .file-name,
+html.dark .asset-edit-dialog .file-name.as-text {
+  color: var(--text-primary) !important;
+}
+html.dark .asset-edit-dialog .file-list,
+html.dark .asset-edit-dialog .file-item {
+  background: var(--bg-card) !important;
+  color: var(--text-primary) !important;
+}
 </style>
 
 <style>

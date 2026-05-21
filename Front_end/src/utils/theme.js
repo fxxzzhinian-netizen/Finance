@@ -17,7 +17,7 @@ export function normalizeTheme(theme) {
 }
 
 export function normalizeMode(mode) {
-  return modeSet.has(mode) ? mode : 'light'
+  return modeSet.has(mode) ? mode : 'dark'
 }
 
 export function applyTheme(theme) {
@@ -51,13 +51,9 @@ export function getStoredMode() {
   try {
     const stored = localStorage.getItem(MODE_STORAGE_KEY)
     if (stored) return normalizeMode(stored)
-    // 未设置过：跟随系统偏好
-    if (typeof window !== 'undefined' && window.matchMedia) {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-    }
-    return 'light'
+    return 'dark'
   } catch {
-    return 'light'
+    return 'dark'
   }
 }
 

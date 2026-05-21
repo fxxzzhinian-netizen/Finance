@@ -3,47 +3,32 @@
     <!-- 顶部工具条 -->
     <div class="msg-toolbar">
       <div class="toolbar-left">
-        <div
-          class="scope-switch"
-          role="tablist"
-          ref="scopeSwitchRef"
-          :style="scopeIndicatorStyle"
-        >
-          <button
-            type="button"
-            role="tab"
-            ref="scopeBtnAllRef"
-            :aria-selected="scope === 'all'"
-            class="scope-btn"
-            :class="{ active: scope === 'all' }"
-            @click="onScopeChange('all')"
-          >全部日志</button>
-          <button
-            type="button"
-            role="tab"
-            ref="scopeBtnMineRef"
-            :aria-selected="scope === 'mine'"
-            class="scope-btn"
-            :class="{ active: scope === 'mine' }"
-            @click="onScopeChange('mine')"
-          >仅我的</button>
-          <span class="scope-indicator" aria-hidden="true"></span>
-        </div>
+        <label class="mine-switch">
+          <span class="mine-switch-label">仅我的</span>
+          <el-switch
+            v-model="mineOnly"
+            aria-label="仅显示我的日志"
+          />
+        </label>
 
         <div
-          class="filter-chips"
-          ref="chipsContainerRef"
-          :style="chipIndicatorStyle"
+          class="type-select-control"
+          :style="typeSelectStyle"
         >
-          <span class="chip-indicator" aria-hidden="true"></span>
-          <span
-            v-for="opt in actionOptions"
-            :key="opt.value || 'all'"
-            class="chip"
-            :class="{ active: actionFilter === opt.value }"
-            :data-value="opt.value || 'all'"
-            @click="onActionChange(opt.value)"
-          >{{ opt.label }}</span>
+          <el-select
+            v-model="selectedActionFilter"
+            class="type-select"
+            popper-class="messages-type-select-popper"
+            :popper-style="typeSelectPopperStyle"
+            aria-label="日志类型筛选"
+          >
+            <el-option
+              v-for="opt in actionOptions"
+              :key="opt.value || 'all'"
+              :label="opt.label"
+              :value="opt.value || TYPE_FILTER_ALL"
+            />
+          </el-select>
         </div>
       </div>
 
@@ -113,14 +98,51 @@
       :key="`timeline-${playToken}`"
     >
       <template v-if="items.length > 0">
+        <section v-if="showTypeRatio" class="type-ratio-card">
+          <div class="ratio-icon-wrap">
+            <img :src="imgLogTypeRatio" alt="" class="ratio-icon" />
+          </div>
+          <div class="ratio-main">
+            <div class="ratio-title-row">
+              <div>
+                <div class="ratio-title">日志类型占比</div>
+                <div class="ratio-sub">当前加载日志分布</div>
+              </div>
+              <span class="ratio-total">{{ typeRatioTotal }} 条日志</span>
+            </div>
+            <div class="ratio-bar" aria-hidden="true">
+              <span
+                v-for="stat in typeRatioStats"
+                :key="stat.value"
+                class="ratio-bar-segment"
+                :style="{ width: `${stat.percent}%`, backgroundColor: stat.color }"
+              ></span>
+            </div>
+          </div>
+          <div class="ratio-legend">
+            <div
+              v-for="stat in typeRatioStats"
+              :key="stat.value"
+              class="ratio-legend-item"
+            >
+              <span class="ratio-dot" :style="{ backgroundColor: stat.color }"></span>
+              <span class="ratio-name">{{ stat.label }}</span>
+              <span class="ratio-percent">{{ stat.percent.toFixed(1) }}%</span>
+            </div>
+          </div>
+        </section>
+
         <div
           v-for="group in grouped"
           :key="group.date"
           class="day-group"
         >
           <div class="day-label">
-            <span class="day-line"></span>
+            <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+              <path fill="currentColor" d="M7 2h2v2h6V2h2v2h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2L2.01 6A2 2 0 0 1 4 4h3V2zm13 8H4v10h16V10zM4 8h16V6H4v2z"/>
+            </svg>
             <span class="day-text">{{ group.label }}</span>
+            <span class="day-count">{{ group.items.length }} 条日志</span>
             <span class="day-line"></span>
           </div>
           <div
@@ -134,6 +156,10 @@
             ]"
             @click="onCardClick(row)"
           >
+            <span v-if="!row.is_read" class="unread-badge">
+              <span class="unread-light"></span>
+              未读
+            </span>
             <div class="msg-icon">
               <img
                 v-if="actionImage(row.action)"
@@ -145,14 +171,13 @@
             </div>
             <div class="msg-body">
               <div class="msg-head">
-                <span class="actor">{{ row.actor || '系统' }}</span>
                 <span class="action-tag" :class="`tag-${row.action.replace('.', '-')}`">
                   {{ actionLabel(row.action) }}
                 </span>
-                <span class="meta-time">{{ fmtTime(row.created_at) }}</span>
+                <div class="msg-summary">{{ row.summary }}</div>
               </div>
               <div class="msg-foot">
-                <div class="msg-summary">{{ row.summary }}</div>
+                <span class="meta-time">{{ fmtTime(row.created_at) }}</span>
                 <div v-if="row.ip" class="meta-ip">
                   <svg viewBox="0 0 24 24" width="11" height="11" aria-hidden="true">
                     <path fill="currentColor" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 0 1 0-5 2.5 2.5 0 0 1 0 5z"/>
@@ -197,7 +222,7 @@
     <el-dialog
       v-model="detailOpen"
       :show-close="true"
-      width="560px"
+      width="720px"
       align-center
       append-to-body
       class="log-detail-dialog"
@@ -215,11 +240,11 @@
           </div>
           <div class="dlg-title-wrap">
             <div class="dlg-title-line">
-              <span class="dlg-actor">{{ detailRow.actor || '系统' }}</span>
               <span
                 class="action-tag"
                 :class="`tag-${detailRow.action.replace('.', '-')}`"
               >{{ actionLabel(detailRow.action) }}</span>
+              <span class="dlg-actor">{{ detailRow.actor || '系统' }}</span>
             </div>
             <div class="dlg-summary">{{ detailRow.summary }}</div>
           </div>
@@ -272,7 +297,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { listLogs, markLogsRead } from '../api/logs'
 import { aiParseSearch } from '../api/ai'
 import { toast } from '../utils/toast'
@@ -286,6 +311,7 @@ import imgFileUpload from '../img/上传文件.png'
 import imgFileDelete from '../img/删除文件.png'
 import imgLogin from '../img/登入.png'
 import imgLogout from '../img/登出.png'
+import imgLogTypeRatio from '../img/log_type_ratio_icon.png'
 
 const ACTION_IMAGE_MAP = {
   'asset.create': imgAssetCreate,
@@ -328,68 +354,87 @@ const actionOptions = [
   { value: 'logout', label: '登出' },
 ]
 
+const TYPE_FILTER_ALL = '__all__'
+const TYPE_RATIO_COLORS = [
+  '#5bc487',
+  '#426da8',
+  '#7f43b8',
+  '#f0cf59',
+  '#6f7f97',
+  '#e6ddd0',
+  '#38a6c7',
+  '#d8874d',
+  '#c75e7f',
+]
+
+const mineOnly = computed({
+  get: () => scope.value === 'mine',
+  set: (value) => onScopeChange(value ? 'mine' : 'all'),
+})
+
+const selectedActionFilter = computed({
+  get: () => actionFilter.value || TYPE_FILTER_ALL,
+  set: (value) => onActionChange(value === TYPE_FILTER_ALL ? '' : value),
+})
+
+const selectedActionLabel = computed(() => (
+  actionOptions.find((opt) => opt.value === actionFilter.value)?.label || '全部类型'
+))
+const longestActionLabel = computed(() => (
+  actionOptions.reduce((longest, opt) => (
+    Array.from(opt.label).length > Array.from(longest).length ? opt.label : longest
+  ), '全部类型')
+))
+const typeSelectStyle = computed(() => ({
+  '--type-select-width': `${Math.max(Array.from(selectedActionLabel.value).length, 4)}em`,
+}))
+const typeSelectPopperStyle = computed(() => ({
+  width: `calc(${Math.max(Array.from(longestActionLabel.value).length, 4)}em + 56px)`,
+  minWidth: '108px',
+}))
+
+const showTypeRatio = computed(() => !actionFilter.value)
+const typeRatioTotal = computed(() => items.value.length)
+const typeRatioStats = computed(() => {
+  const total = typeRatioTotal.value
+  const counts = new Map()
+  for (const row of items.value) {
+    counts.set(row.action, (counts.get(row.action) || 0) + 1)
+  }
+
+  const knownStats = actionOptions
+    .filter((opt) => opt.value && counts.has(opt.value))
+    .map((opt) => {
+      const count = counts.get(opt.value)
+      return {
+        value: opt.value,
+        label: opt.label,
+        count,
+        percent: total > 0 ? (count / total) * 100 : 0,
+      }
+    })
+
+  const knownValues = new Set(knownStats.map((stat) => stat.value))
+  const unknownStats = Array.from(counts.entries())
+    .filter(([value]) => !knownValues.has(value))
+    .map(([value, count], index) => ({
+      value,
+      label: actionLabel(value),
+      count,
+      percent: total > 0 ? (count / total) * 100 : 0,
+    }))
+
+  return [...knownStats, ...unknownStats]
+    .sort((a, b) => b.count - a.count)
+    .map((stat, index) => ({
+      ...stat,
+      color: TYPE_RATIO_COLORS[index % TYPE_RATIO_COLORS.length],
+    }))
+})
+
 const ACTION_LABEL_MAP = Object.fromEntries(
   actionOptions.filter((o) => o.value).map((o) => [o.value, o.label]),
 )
-
-/* ===== scope-switch 下划线滑动指示器 ===== */
-const scopeSwitchRef = ref(null)
-const scopeBtnAllRef = ref(null)
-const scopeBtnMineRef = ref(null)
-const scopeIndicator = ref({ left: 0, width: 0 })
-const scopeIndicatorStyle = computed(() => ({
-  '--scope-indicator-left': `${scopeIndicator.value.left}px`,
-  '--scope-indicator-width': `${scopeIndicator.value.width}px`,
-}))
-function updateScopeIndicator() {
-  const container = scopeSwitchRef.value
-  const target = scope.value === 'all' ? scopeBtnAllRef.value : scopeBtnMineRef.value
-  if (!container || !target) return
-  const cb = container.getBoundingClientRect()
-  const tb = target.getBoundingClientRect()
-  scopeIndicator.value = { left: tb.left - cb.left, width: tb.width }
-}
-
-/* ===== filter-chips 底色滑动指示器 ===== */
-const chipsContainerRef = ref(null)
-const chipIndicator = ref({ left: 0, width: 0, opacity: 0 })
-const chipIndicatorStyle = computed(() => ({
-  '--chip-indicator-left': `${chipIndicator.value.left}px`,
-  '--chip-indicator-width': `${chipIndicator.value.width}px`,
-  '--chip-indicator-opacity': chipIndicator.value.opacity,
-}))
-function updateChipIndicator() {
-  const container = chipsContainerRef.value
-  if (!container) return
-  const target = container.querySelector('.chip.active')
-  if (!target) {
-    chipIndicator.value = { ...chipIndicator.value, opacity: 0 }
-    return
-  }
-  const cb = container.getBoundingClientRect()
-  const tb = target.getBoundingClientRect()
-  chipIndicator.value = {
-    left: tb.left - cb.left,
-    width: tb.width,
-    opacity: 1,
-  }
-}
-
-function refreshIndicators() {
-  nextTick(() => {
-    updateScopeIndicator()
-    updateChipIndicator()
-  })
-}
-
-watch([scope, actionFilter], refreshIndicators)
-onMounted(() => {
-  refreshIndicators()
-  window.addEventListener('resize', refreshIndicators)
-})
-onUnmounted(() => {
-  window.removeEventListener('resize', refreshIndicators)
-})
 
 function actionLabel(a) {
   return ACTION_LABEL_MAP[a] || a
@@ -640,10 +685,6 @@ onMounted(() => {
 onUnmounted(() => {
   if (pollTimer) clearInterval(pollTimer)
 })
-
-watch(scope, () => {
-  // already handled by onScopeChange
-})
 </script>
 
 <style scoped>
@@ -696,128 +737,135 @@ watch(scope, () => {
   gap: 12px;
   flex-wrap: wrap;
 }
-/* 让左侧 scope/chips 与右侧输入框底线大致齐平 */
-.scope-switch,
-.filter-chips {
+/* 让左侧筛选项与右侧输入框底线大致齐平 */
+.mine-switch,
+.type-select-control {
   align-self: center;
-  margin-bottom: 6px;
 }
 .toolbar-right .btn-secondary,
 .toolbar-right .btn-icon {
   margin-bottom: 6px;
 }
 
-/* 左侧 scope 改为下划线式 segmented tabs，下划线在按钮之间平移 */
-.scope-switch {
-  position: relative;
+/* 左侧开关与类型筛选 */
+.mine-switch {
   display: inline-flex;
   align-items: center;
-  gap: 22px;
-  padding: 0;
-  background: transparent;
-  margin-right: 4px;
+  gap: 10px;
+  user-select: none;
+  align-self: flex-end;
 }
-.scope-btn {
-  appearance: none;
-  border: 0;
-  background: transparent;
-  height: 28px;
-  padding: 0;
-  font-size: 14px;
+.mine-switch-label {
+  font-size: 13px;
   font-weight: 600;
-  color: var(--theme-text-muted, #b9a78a);
-  cursor: pointer;
-  position: relative;
-  letter-spacing: 0.5px;
-  transition: color 0.25s ease;
-}
-.scope-btn:hover {
   color: var(--theme-primary-deep, #8a7355);
+  letter-spacing: 0.5px;
 }
-.scope-btn.active {
-  color: var(--text-primary, #2f2f33);
+.mine-switch :deep(.el-switch__core) {
+  min-width: 40px;
+  height: 22px;
+  border-color: rgba(var(--theme-primary-rgb), 0.18);
+  background: rgba(var(--theme-primary-rgb), 0.12);
+  box-shadow: inset 0 1px 3px rgba(94, 74, 46, 0.12);
 }
-/* 滑动下划线 */
-.scope-indicator {
-  position: absolute;
-  bottom: -6px;
-  left: 0;
-  height: 2px;
-  background: #c9a063;
-  border-radius: 2px;
-  pointer-events: none;
-  transform: translateX(var(--scope-indicator-left, 0));
-  width: var(--scope-indicator-width, 0);
-  transition: transform 0.34s cubic-bezier(0.22, 1, 0.36, 1),
-    width 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+.mine-switch :deep(.el-switch__action) {
+  width: 18px;
+  height: 18px;
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(94, 74, 46, 0.18);
+}
+.mine-switch :deep(.el-switch.is-checked .el-switch__core) {
+  border-color: var(--theme-primary, #c5a47e);
+  background: var(--theme-primary, #c5a47e);
 }
 
-/* 一道竖向分隔线，强化 scope 与 chips 的层级 */
+/* 一道竖向分隔线，强化 switch 与类型筛选的层级 */
 .toolbar-left::before {
   content: none;
 }
-.scope-switch + .filter-chips {
+.mine-switch + .type-select-control {
   position: relative;
-  padding-left: 14px;
+  margin-left: 2px;
+  padding-left: 18px;
 }
-.scope-switch + .filter-chips::before {
+.mine-switch + .type-select-control::before {
   content: '';
   position: absolute;
   left: 0;
-  top: 50%;
+  bottom: 0;
   transform: translateY(-50%);
   width: 1px;
   height: 14px;
   background: rgba(var(--theme-primary-rgb), 0.35);
 }
 
-.filter-chips {
+.type-select-control {
   position: relative;
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  isolation: isolate;
+  width: calc(var(--type-select-width, 4em) + 34px);
+  min-width: 108px;
+  /* max-width: 180px; */
+  transition: width 0.24s ease;
 }
-/* 滑动底色块 */
-.chip-indicator {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  background: rgba(var(--theme-primary-rgb), 0.18);
-  border-radius: 6px;
-  pointer-events: none;
-  z-index: 0;
-  opacity: var(--chip-indicator-opacity, 0);
-  transform: translateX(var(--chip-indicator-left, 0));
-  width: var(--chip-indicator-width, 0);
-  transition: transform 0.34s cubic-bezier(0.22, 1, 0.36, 1),
-    width 0.34s cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 0.2s ease;
+.type-select {
+  width: 100%;
 }
-.chip {
-  position: relative;
-  z-index: 1;
-  font-size: 12px;
-  color: var(--theme-primary-deep, #8a7355);
-  background: transparent;
+.type-select :deep(.el-select__wrapper) {
+  min-height: 44px;
+  padding: 14px 0 6px;
+  background: transparent !important;
+  border-radius: 0;
   border: 0;
-  padding: 4px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-  user-select: none;
-  transition: color 0.22s ease,
-    transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border-bottom: 2px solid var(--theme-input-border, #e0d2b8);
+  box-shadow: none !important;
+  font-size: 15px;
+  color: var(--theme-primary-deep, #8a7355);
+  line-height: 1.2;
+  transition: border-bottom-color 0.25s ease;
 }
-.chip:hover:not(.active) {
-  color: var(--theme-text-hover, #5e4a2e);
+.type-select :deep(.el-select__wrapper.is-focused),
+.type-select :deep(.el-select__wrapper:hover) {
+  border-bottom-color: var(--theme-primary, #c5a47e);
+  box-shadow: none !important;
 }
-.chip:active {
-  transform: scale(0.94);
+.type-select :deep(.el-select__selection),
+.type-select :deep(.el-select__selected-item) {
+  min-width: 0;
 }
-.chip.active {
-  color: var(--theme-text-hover, #5e4a2e);
+.type-select :deep(.el-select__placeholder),
+.type-select :deep(.el-select__selected-item span) {
+  color: var(--theme-primary-deep, #8a7355);
+  font-size: 15px;
   font-weight: 600;
+  letter-spacing: 0.4px;
+}
+.type-select :deep(.el-select__suffix) {
+  color: var(--theme-text-hover, #5e4a2e);
+}
+.type-select :deep(.el-select__caret) {
+  font-size: 15px;
+  color: var(--theme-primary-deep, #8a7355);
+  transition: color 0.22s ease, transform 0.22s ease;
+}
+.type-select-control:hover :deep(.el-select__caret),
+.type-select :deep(.el-select__wrapper.is-focused .el-select__caret) {
+  color: var(--theme-text-hover, #5e4a2e);
+}
+html.dark .type-select :deep(.el-select__wrapper) {
+  background: transparent !important;
+  border-bottom-color: var(--theme-primary, #c5a47e) !important;
+}
+html.dark .type-select :deep(.el-select__wrapper.is-focused),
+html.dark .type-select :deep(.el-select__wrapper:hover) {
+  border-bottom-color: var(--theme-primary, #c5a47e) !important;
+}
+html.dark .type-select :deep(.el-select__placeholder),
+html.dark .type-select :deep(.el-select__selected-item span),
+html.dark .type-select :deep(.el-select__caret) {
+  color: var(--theme-primary-deep);
+}
+html.dark .type-select-control:hover :deep(.el-select__caret),
+html.dark .type-select :deep(.el-select__wrapper.is-focused .el-select__caret) {
+  color: var(--theme-text-hover);
 }
 
 /* 金色浮动 label 输入框（与资产表保持一致） */
@@ -1022,21 +1070,183 @@ watch(scope, () => {
 .msg-timeline {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 18px;
   max-width: 1280px;
   width: 100%;
   margin: 0 auto;
 }
-.day-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+/* -------- 日志类型占比卡片：基础布局（主题无关） -------- */
+.type-ratio-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 78px minmax(0, 1fr) minmax(300px, 0.92fr);
+  align-items: center;
+  gap: 24px;
+  padding: 18px 22px;
+  overflow: hidden;
+  border-radius: 14px;
 }
-.day-label {
+.type-ratio-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.ratio-icon-wrap,
+.ratio-main,
+.ratio-legend {
+  position: relative;
+  z-index: 1;
+}
+.ratio-icon-wrap {
+  width: 64px;
+  height: 64px;
+  overflow: hidden;
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin: 2px 4px 2px;
+  justify-content: center;
+  border-radius: 50%;
+}
+.ratio-icon {
+  width: 54px;
+  height: 54px;
+  transform-origin: center;
+  transform: scale(1.8);
+  overflow: hidden;
+  object-fit: contain;
+  display: block;
+}
+.ratio-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.ratio-title {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+.ratio-sub,
+.ratio-total {
+  margin-top: 4px;
+  font-size: 12px;
+}
+.ratio-total {
+  flex-shrink: 0;
+  font-weight: 600;
+}
+.ratio-bar {
+  display: flex;
+  width: 100%;
+  height: 14px;
+  overflow: hidden;
+  border-radius: 999px;
+}
+.ratio-bar-segment {
+  min-width: 4px;
+  height: 100%;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.12);
+}
+.ratio-legend {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 22px;
+}
+.ratio-legend-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  font-size: 12px;
+}
+.ratio-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  box-shadow: 0 0 10px currentColor;
+}
+.ratio-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ratio-percent {
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+/* -------- 白天模式：参考系统主色（金棕色），与日志卡片风格一致 -------- */
+.type-ratio-card {
+  border: 1px solid rgba(var(--theme-primary-rgb), 0.28);
+  background:
+    radial-gradient(circle at 14% 12%, rgba(var(--theme-primary-rgb), 0.22), transparent 38%),
+    linear-gradient(135deg, var(--theme-surface) 0%, var(--bg-card) 55%, var(--theme-surface-subtle) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 10px 28px rgba(var(--theme-primary-deep-rgb), 0.10);
+}
+.type-ratio-card::before {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.32), transparent 38%),
+    radial-gradient(circle at 100% 100%, rgba(var(--theme-primary-rgb), 0.20), transparent 38%);
+  opacity: 0.75;
+}
+.ratio-icon-wrap {
+  background:
+    radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.85) 0%, rgba(var(--theme-primary-rgb), 0.22) 70%);
+  box-shadow:
+    inset 0 0 16px rgba(var(--theme-primary-rgb), 0.20),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    0 4px 12px rgba(var(--theme-primary-deep-rgb), 0.14);
+}
+.ratio-icon {
+  filter: drop-shadow(0 1px 2px rgba(var(--theme-primary-deep-rgb), 0.25));
+}
+.ratio-title {
+  color: var(--theme-primary-deep, #8a7355);
+}
+.ratio-sub {
+  color: var(--theme-text-muted, #b9a78a);
+}
+.ratio-total {
+  color: var(--theme-text-hover, #6e5a40);
+}
+.ratio-bar {
+  background: rgba(var(--theme-primary-rgb), 0.14);
+  box-shadow:
+    inset 0 1px 2px rgba(var(--theme-primary-deep-rgb), 0.20),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.4);
+}
+.ratio-legend-item {
+  color: var(--text-primary, #2f2f33);
+}
+.ratio-name {
+  color: var(--theme-primary-deep, #8a7355);
+}
+.ratio-percent {
+  color: var(--theme-primary-deep, #8a7355);
+}
+
+/* -------- 黑夜模式：保留原本的深色玻璃质感（已迁移到下方非 scoped 块） -------- */
+.day-group {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  justify-content: stretch;
+  gap: 16px 18px;
+}
+.day-label {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 2px -2px;
+  color: var(--theme-primary-deep, #8a7355);
   animation: day-label-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 @keyframes day-label-in {
@@ -1059,39 +1269,114 @@ watch(scope, () => {
   letter-spacing: 1px;
   font-weight: 600;
 }
+.day-count {
+  font-size: 11px;
+  color: var(--theme-text-muted, #b9a78a);
+}
 
 .msg-card {
   position: relative;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 16px 8px 14px;
-  background: #fff;
-  border: 2px solid rgba(var(--theme-primary-rgb), 0.45);
-  border-radius: 10px;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 13px 13px;
+  min-height: 128px;
+  padding: 18px 18px 16px;
+  background:
+    radial-gradient(circle at 14% 10%, rgba(var(--theme-primary-rgb), 0.24), transparent 36%),
+    radial-gradient(circle at 100% 100%, rgba(var(--theme-primary-rgb), 0.16), transparent 36%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.48));
+  border: 1px solid rgba(var(--theme-primary-rgb), 0.30);
+  border-radius: 12px;
   animation: msg-card-rise 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
-  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.64),
+    0 12px 30px rgba(var(--theme-primary-deep-rgb), 0.10);
+  backdrop-filter: blur(12px);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease,
+    background 0.18s ease;
   cursor: pointer;
   overflow: hidden;
 }
+.msg-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.34), transparent 38%),
+    radial-gradient(circle at 100% 100%, rgba(var(--theme-primary-rgb), 0.22), transparent 36%);
+  opacity: 0.82;
+}
+.msg-card::after {
+  content: '→';
+  position: absolute;
+  right: 15px;
+  bottom: 13px;
+  color: var(--theme-primary-deep, #8a7355);
+  font-size: 20px;
+  line-height: 1;
+  opacity: 0.75;
+  transition: transform 0.18s ease, opacity 0.18s ease;
+}
 .msg-card .msg-body {
-  padding-bottom: 0;
+  display: contents;
 }
 
 .msg-card:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(var(--theme-primary-deep-rgb), 0.15);
-  border-color: rgba(var(--theme-primary-rgb), 0.7);
+  transform: translateY(-3px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.62),
+    0 14px 36px rgba(var(--theme-primary-deep-rgb), 0.18),
+    0 0 22px rgba(var(--theme-primary-rgb), 0.18);
+  border-color: rgba(var(--theme-primary-rgb), 0.55);
+}
+.msg-card:hover::after {
+  opacity: 1;
+  transform: translateX(3px);
 }
 .msg-card:active {
   transform: scale(0.995);
   transition-duration: 0.1s;
 }
 .msg-card.unread {
-  background: var(--theme-surface-subtle, #fffbf3);
-  border-style: dashed;
-  border-color: rgba(var(--theme-primary-rgb), 0.7);
+  background:
+    radial-gradient(circle at 14% 10%, rgba(var(--theme-primary-rgb), 0.36), transparent 38%),
+    radial-gradient(circle at 100% 100%, rgba(var(--theme-primary-rgb), 0.22), transparent 38%),
+    linear-gradient(145deg, rgba(255, 251, 243, 0.90), rgba(255, 255, 255, 0.58));
+  border-color: rgba(var(--theme-primary-rgb), 0.72);
+  /* box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.76),
+    0 14px 34px rgba(var(--theme-primary-deep-rgb), 0.18),
+    0 0 26px rgba(var(--theme-primary-rgb), 0.28); */
+}
+.unread-badge {
+  position: absolute;
+  top: 15px;
+  right: 16px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid rgba(var(--theme-primary-rgb), 0.24);
+  border-radius: 999px;
+  background: rgba(var(--theme-primary-rgb), 0.12);
+  color: var(--theme-primary-deep, #8a7355);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+}
+.unread-light {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #f7bd55;
+  box-shadow:
+    0 0 0 3px rgba(247, 189, 85, 0.18),
+    0 0 10px rgba(247, 189, 85, 0.55);
 }
 /* 交错入场：限定在前 12 张，避免大列表性能负担 */
 .msg-card:nth-child(1)  { animation-delay: 0.02s; }
@@ -1114,22 +1399,27 @@ watch(scope, () => {
 
 /* 卡片左侧图标：直接展示 PNG，无边框无底色 */
 .msg-icon {
+  position: relative;
+  z-index: 1;
+  grid-column: 1;
+  grid-row: 1;
   flex-shrink: 0;
-  width: 36px;
-  height: 36px;
+  width: 42px;
+  height: 42px;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-top: 0;
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
+  border: 1px solid rgba(var(--theme-primary-rgb), 0.34);
+  border-radius: 10px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    0 8px 18px rgba(var(--theme-primary-deep-rgb), 0.10);
   color: #b08a52;
 }
 .msg-icon-img {
-  width: 32px;
-  height: 32px;
+  width: 29px;
+  height: 29px;
   object-fit: contain;
   display: block;
   user-select: none;
@@ -1138,26 +1428,40 @@ watch(scope, () => {
 
 .msg-body {
   flex: 1;
+  width: 100%;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 10px;
 }
 .msg-head {
+  position: relative;
+  z-index: 1;
+  grid-column: 2;
+  grid-row: 1;
   display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 9px;
+  flex-wrap: nowrap;
+  min-width: 0;
+  padding-right: 62px;
+  padding-top: 1px;
 }
 .actor {
   font-weight: 700;
-  font-size: 13.5px;
+  font-size: 13px;
   color: var(--text-primary, #2f2f33);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .action-tag {
-  font-size: 11px;
+  order: -1;
+  font-size: 10.5px;
   font-weight: 600;
-  padding: 2px 7px;
+  padding: 3px 9px;
   border-radius: 4px;
   letter-spacing: 0.5px;
   background: #f0e7d3;
@@ -1180,9 +1484,15 @@ watch(scope, () => {
   box-shadow: 0 0 0 3px rgba(239, 102, 91, 0.18);
 }
 .msg-summary {
-  font-size: 13.5px;
+  width: 100%;
+  font-size: 14px;
+  font-weight: 700;
   color: var(--text-primary, #2f2f33);
   line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .changes {
@@ -1235,18 +1545,26 @@ watch(scope, () => {
 }
 
 .meta-time {
-  margin-left: auto;
+  margin-left: 0;
   font-size: 12px;
   color: var(--text-muted, #999);
   line-height: 1.2;
 }
 .msg-foot {
+  position: relative;
+  z-index: 1;
+  grid-column: 1 / -1;
+  grid-row: 2;
+  align-self: end;
   display: flex;
+  flex-direction: row;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
+  margin-top: auto;
+  padding-right: 28px;
 }
 .msg-foot .msg-summary {
-  flex: 1;
+  flex: initial;
   min-width: 0;
 }
 .meta-ip {
@@ -1262,6 +1580,42 @@ watch(scope, () => {
 }
 .meta-ip svg {
   color: var(--theme-primary-light-3, #d4b89a);
+}
+/* msg-card 暗色样式已迁移到下方非 scoped 块 */
+
+@media (max-width: 1180px) {
+  .type-ratio-card {
+    grid-template-columns: 70px minmax(0, 1fr);
+  }
+  .ratio-legend {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .day-group {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 860px) {
+  .type-ratio-card {
+    grid-template-columns: 1fr;
+  }
+  .ratio-icon-wrap {
+    display: none;
+  }
+  .ratio-legend {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .day-group {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .day-group,
+  .ratio-legend {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* 空 / loading */
@@ -1302,40 +1656,163 @@ watch(scope, () => {
 </style>
 
 <!-- 弹窗内部样式：因 el-dialog 通过 teleport 渲染到 body，使用非 scoped -->
-<style>
+<style scoped>
+html.dark .messages-page .type-ratio-card {
+  border-color: rgba(255, 255, 255, 0.10);
+  background:
+    radial-gradient(120% 140% at 0% 50%, rgba(var(--theme-primary-rgb), 0.12) 0%, transparent 55%),
+    radial-gradient(80% 120% at 100% 50%, rgba(110, 90, 220, 0.12) 0%, transparent 60%),
+    linear-gradient(135deg, #1f2233 0%, #181a28 45%, #11131c 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 16px 38px rgba(0, 0, 0, 0.5);
+}
+html.dark .messages-page .type-ratio-card::before {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 255, 255, 0.07), transparent 40%),
+    radial-gradient(circle at 100% 100%, rgba(0, 0, 0, 0.35), transparent 50%);
+  opacity: 1;
+}
+html.dark .messages-page .ratio-icon-wrap {
+  background:
+    radial-gradient(circle at 35% 30%, rgba(var(--theme-primary-rgb), 0.18) 0%, rgba(0, 0, 0, 0.55) 70%);
+  box-shadow:
+    inset 0 0 18px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 0 22px rgba(var(--theme-primary-rgb), 0.18);
+}
+html.dark .messages-page .ratio-icon {
+  filter: drop-shadow(0 0 10px rgba(var(--theme-primary-rgb), 0.42));
+}
+html.dark .messages-page .ratio-title {
+  color: #eef0f7;
+}
+html.dark .messages-page .ratio-sub {
+  color: rgba(232, 234, 242, 0.58);
+}
+html.dark .messages-page .ratio-total {
+  color: rgba(232, 234, 242, 0.78);
+}
+html.dark .messages-page .ratio-bar {
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow:
+    inset 0 1px 3px rgba(0, 0, 0, 0.55),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.04);
+}
+html.dark .messages-page .ratio-bar-segment {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18);
+}
+html.dark .messages-page .ratio-legend-item {
+  color: rgba(232, 234, 242, 0.82);
+}
+html.dark .messages-page .ratio-name {
+  color: #e0b974;
+}
+html.dark .messages-page .ratio-percent {
+  color: #e0b974;
+}
+html.dark .messages-page .msg-card::before {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent 38%),
+    radial-gradient(circle at 100% 100%, rgba(var(--theme-primary-rgb), 0.18), transparent 38%);
+  opacity: 0.9;
+}
+html.dark .messages-page .msg-icon {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.03)) !important;
+  border-color: rgba(var(--theme-primary-rgb), 0.34) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    0 0 18px rgba(var(--theme-primary-rgb), 0.12) !important;
+}
+html.dark .messages-page .unread-badge {
+  border-color: rgba(247, 189, 85, 0.28);
+  background: rgba(247, 189, 85, 0.12);
+  color: #f6c45f;
+}
 .log-detail-dialog .el-dialog {
-  border-radius: 14px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 36px);
+  border-radius: 18px;
   overflow: hidden;
-  border: 1px solid rgba(var(--theme-primary-rgb), 0.25);
-  box-shadow: 0 20px 60px rgba(94, 74, 46, 0.25);
+  background:
+    radial-gradient(circle at 14% 12%, rgba(var(--theme-primary-rgb), 0.22), transparent 34%),
+    radial-gradient(circle at 100% 100%, rgba(var(--theme-primary-rgb), 0.16), transparent 36%),
+    linear-gradient(145deg, rgba(24, 28, 42, 0.78), rgba(7, 12, 24, 0.84));
+  border: 1px solid rgba(var(--theme-primary-rgb), 0.64);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 26px 70px rgba(0, 0, 0, 0.58),
+    0 0 0 1px rgba(var(--theme-primary-rgb), 0.12),
+    0 0 34px rgba(var(--theme-primary-rgb), 0.22);
+  backdrop-filter: blur(22px) saturate(130%);
+  -webkit-backdrop-filter: blur(22px) saturate(130%);
+}
+.log-detail-dialog .el-dialog::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    linear-gradient(90deg, transparent 3%, rgba(247, 189, 85, 0.55) 50%, transparent 97%) top / 100% 1px no-repeat,
+    linear-gradient(90deg, transparent 3%, rgba(247, 189, 85, 0.45) 50%, transparent 97%) bottom / 100% 1px no-repeat;
+  opacity: 0.9;
 }
 .log-detail-dialog .el-dialog__header {
-  padding: 18px 22px 14px;
+  flex-shrink: 0;
+  padding: 24px 8px 24px;
   margin-right: 0;
-  background: linear-gradient(180deg, var(--theme-surface-subtle, #fffbf3) 0%, #fff 100%);
-  border-bottom: 1px solid rgba(var(--theme-primary-rgb), 0.18);
+  background: transparent;
+  border-bottom: 0;
 }
 .log-detail-dialog .el-dialog__body {
-  padding: 18px 22px 22px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0 8px 24px;
+}
+.log-detail-dialog .el-dialog__headerbtn {
+  top: 28px;
+  right: 28px;
+  width: 34px;
+  height: 34px;
+}
+.log-detail-dialog .el-dialog__close {
+  color: rgba(232, 234, 242, 0.78);
+  font-size: 24px;
+  transition: color 0.18s ease, transform 0.18s ease;
+}
+.log-detail-dialog .el-dialog__headerbtn:hover .el-dialog__close {
+  color: #e7c382;
+  transform: rotate(90deg);
 }
 .log-detail-dialog .dlg-header {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 24px;
 }
 .log-detail-dialog .dlg-icon {
   flex-shrink: 0;
-  width: 44px;
-  height: 44px;
+  width: 82px;
+  height: 82px;
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: 18px;
 }
 .log-detail-dialog .dlg-icon img {
-  width: 40px;
-  height: 40px;
+  width: 76px;
+  height: 76px;
   object-fit: contain;
   display: block;
+  filter: drop-shadow(0 0 16px rgba(var(--theme-primary-rgb), 0.50));
 }
 .log-detail-dialog .dlg-title-wrap {
   flex: 1;
@@ -1345,150 +1822,227 @@ watch(scope, () => {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 4px;
+  margin-bottom: 12px;
 }
 .log-detail-dialog .dlg-actor {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text-primary, #2f2f33);
+  font-size: 16px;
+  font-weight: 500;
+  color: #d7aa62;
 }
 .log-detail-dialog .action-tag {
-  font-size: 11px;
-  font-weight: 600;
-  padding: 2px 7px;
-  border-radius: 4px;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 7px 14px;
+  border-radius: 999px;
   letter-spacing: 0.5px;
-  background: #f0e7d3;
-  color: var(--theme-primary-deep, #8a7355);
+  border: 1px solid rgba(94, 219, 151, 0.35);
+  background: rgba(46, 160, 109, 0.24);
+  color: #67d69a;
 }
-.log-detail-dialog .tag-asset-create { background: #e1f3e8; color: #2c7a5e; }
-.log-detail-dialog .tag-asset-update { background: #fff3d9; color: #b08a52; }
-.log-detail-dialog .tag-asset-delete { background: #fde4e4; color: #c44545; }
-.log-detail-dialog .tag-asset-qr-regen { background: #e6f0fb; color: #1f5fa8; }
-.log-detail-dialog .tag-file-upload { background: #e6f0fb; color: #1f5fa8; }
-.log-detail-dialog .tag-file-delete { background: #fde4e4; color: #c44545; }
-.log-detail-dialog .tag-login { background: #f0e7f7; color: #6b3a8a; }
-.log-detail-dialog .tag-logout { background: #f0e7f7; color: #6b3a8a; }
+.log-detail-dialog .tag-asset-create { background: rgba(44, 122, 94, 0.28); color: #6fd49b; }
+.log-detail-dialog .tag-asset-update { background: rgba(176, 138, 82, 0.28); color: #e0b974; }
+.log-detail-dialog .tag-asset-delete { background: rgba(196, 69, 69, 0.28); color: #ff8a8a; }
+.log-detail-dialog .tag-asset-qr-regen { background: rgba(79, 143, 216, 0.28); color: #7fb6ee; }
+.log-detail-dialog .tag-file-upload { background: rgba(79, 143, 216, 0.28); color: #7fb6ee; }
+.log-detail-dialog .tag-file-delete { background: rgba(196, 69, 69, 0.28); color: #ff8a8a; }
+.log-detail-dialog .tag-login { background: rgba(155, 110, 200, 0.28); color: #c9a8e6; }
+.log-detail-dialog .tag-logout { background: rgba(155, 110, 200, 0.28); color: #c9a8e6; }
 .log-detail-dialog .dlg-summary {
-  font-size: 14px;
-  color: var(--text-secondary, #555);
-  line-height: 1.5;
+  font-size: 23px;
+  color: #e9edf7;
+  line-height: 1.45;
+  font-weight: 600;
+  letter-spacing: 0.3px;
 }
 
-.log-detail-dialog .dlg-meta-row {
+.log-detail-dialog .dlg-body {
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px 24px;
-  padding: 10px 14px;
-  background: var(--theme-surface-muted, #faf6ec);
-  border-radius: 8px;
-  margin-bottom: 16px;
+  flex-direction: column;
+  min-height: 0;
+  max-height: calc(100vh - 224px);
+  overflow: hidden;
+}
+.log-detail-dialog .dlg-meta-row {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  padding: 14px 0;
+  background: rgba(12, 18, 31, 0.58);
+  border: 1px solid rgba(var(--theme-primary-rgb), 0.34);
+  border-radius: 10px;
+  margin-bottom: 28px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 10px 28px rgba(0, 0, 0, 0.20);
 }
 .log-detail-dialog .dlg-meta-item {
   display: flex;
+  flex-direction: column;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  min-width: 0;
+  padding: 0 22px;
+  font-size: 14px;
+}
+.log-detail-dialog .dlg-meta-item + .dlg-meta-item {
+  border-left: 1px solid rgba(255, 255, 255, 0.07);
 }
 .log-detail-dialog .dlg-meta-label {
-  color: var(--theme-primary-deep, #8a7355);
-  font-weight: 600;
-}
-.log-detail-dialog .dlg-meta-value {
-  color: var(--text-primary, #2f2f33);
-}
-.log-detail-dialog .dlg-meta-value.mono {
-  font-family: 'SF Mono', Menlo, Consolas, monospace;
-  font-size: 12.5px;
-}
-
-.log-detail-dialog .dlg-section-title {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  color: #d7aa62;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+}
+.log-detail-dialog .dlg-meta-label::before {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: #d7aa62;
+  font-size: 14px;
+}
+.log-detail-dialog .dlg-meta-item:nth-child(1) .dlg-meta-label::before {
+  content: '◷';
+}
+.log-detail-dialog .dlg-meta-item:nth-child(2) .dlg-meta-label::before {
+  content: '◉';
+}
+.log-detail-dialog .dlg-meta-item:nth-child(3) .dlg-meta-label::before {
+  content: '♙';
+}
+.log-detail-dialog .dlg-meta-value {
+  max-width: 100%;
+  overflow: hidden;
+  color: #dfe4ef;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.log-detail-dialog .dlg-meta-value.mono {
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
   font-size: 13px;
-  font-weight: 600;
-  color: var(--theme-text-hover, #5e4a2e);
-  margin-bottom: 10px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid rgba(var(--theme-primary-rgb), 0.25);
+}
+
+.log-detail-dialog .dlg-section-title {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 17px;
+  font-weight: 800;
+  color: #d7aa62;
+  margin-bottom: 14px;
+  padding-bottom: 0;
+  border-bottom: 0;
   width: 100%;
 }
 .log-detail-dialog .dlg-section-count {
-  background: #c9a063;
-  color: #fff;
-  font-size: 11px;
+  background: rgba(var(--theme-primary-rgb), 0.22);
+  color: #e7c382;
+  font-size: 12px;
   font-weight: 700;
-  padding: 1px 7px;
+  padding: 3px 10px;
   border-radius: 999px;
   min-width: 18px;
   text-align: center;
 }
 
 .log-detail-dialog .dlg-changes {
+  flex: 1;
+  min-height: 120px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  max-height: 380px;
+  gap: 0;
+  max-height: clamp(140px, calc(100vh - 410px), 430px);
   overflow-y: auto;
+  padding: 12px 24px;
+  background: rgba(12, 18, 31, 0.52);
+  border: 1px solid rgba(var(--theme-primary-rgb), 0.32);
+  border-radius: 10px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 12px 34px rgba(0, 0, 0, 0.24);
+}
+.log-detail-dialog .dlg-changes::-webkit-scrollbar {
+  width: 7px;
+}
+.log-detail-dialog .dlg-changes::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 999px;
+}
+.log-detail-dialog .dlg-changes::-webkit-scrollbar-thumb {
+  background: rgba(var(--theme-primary-rgb), 0.45);
+  border-radius: 999px;
+}
+.log-detail-dialog .dlg-changes::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--theme-primary-rgb), 0.66);
 }
 .log-detail-dialog .dlg-change-row {
   display: grid;
-  grid-template-columns: 80px 1fr;
+  grid-template-columns: 130px 1fr;
   align-items: center;
-  gap: 12px;
-  padding: 8px 12px;
-  background: #fafafa;
-  border-radius: 6px;
+  gap: 24px;
+  padding: 11px 4px;
+  background: transparent;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0;
+}
+.log-detail-dialog .dlg-change-row:last-child {
+  border-bottom: 0;
 }
 .log-detail-dialog .dlg-change-row:hover {
-  background: #f5f0e3;
+  background: rgba(var(--theme-primary-rgb), 0.06);
 }
 .log-detail-dialog .dlg-change-label {
-  font-size: 12.5px;
-  color: var(--theme-primary-deep, #8a7355);
-  font-weight: 600;
+  font-size: 15px;
+  color: #d7c29a;
+  font-weight: 700;
 }
 .log-detail-dialog .dlg-change-flow {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 16px;
   flex-wrap: wrap;
-  font-size: 13px;
+  font-size: 14px;
 }
 .log-detail-dialog .dlg-ch-before {
-  color: #c44545;
+  color: #f3a0a0;
   text-decoration: line-through;
-  background: rgba(196, 69, 69, 0.08);
-  padding: 2px 8px;
-  border-radius: 4px;
-  max-width: 200px;
+  background: rgba(196, 69, 69, 0.22);
+  padding: 5px 14px;
+  border-radius: 5px;
+  max-width: 240px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-weight: 700;
 }
 .log-detail-dialog .dlg-ch-after {
-  color: #2c7a5e;
-  background: rgba(44, 122, 94, 0.08);
-  padding: 2px 8px;
-  border-radius: 4px;
+  color: #6fd49b;
+  background: rgba(44, 122, 94, 0.24);
+  padding: 5px 14px;
+  border-radius: 5px;
   font-weight: 600;
-  max-width: 200px;
+  max-width: 280px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .log-detail-dialog .dlg-ch-arrow {
-  color: var(--theme-text-muted, #b9a78a);
+  color: #d7aa62;
   flex-shrink: 0;
 }
 .log-detail-dialog .dlg-empty {
-  padding: 24px;
+  padding: 30px;
   text-align: center;
-  color: var(--theme-text-muted, #b9a78a);
-  font-size: 13px;
-  background: var(--theme-surface-muted, #faf6ec);
-  border-radius: 8px;
+  color: rgba(232, 234, 242, 0.66);
+  font-size: 14px;
+  background: rgba(12, 18, 31, 0.52);
+  border: 1px solid rgba(var(--theme-primary-rgb), 0.28);
+  border-radius: 10px;
 }
 
 /* ===================== 日志详情弹窗 进入动效 ===================== */
@@ -1507,6 +2061,9 @@ watch(scope, () => {
 }
 .el-overlay:has(.log-detail-dialog) {
   animation: log-dialog-overlay-in 0.28s ease both;
+  background:
+    radial-gradient(circle at 50% 45%, rgba(var(--theme-primary-rgb), 0.10), transparent 36%),
+    rgba(0, 0, 0, 0.72);
 }
 @keyframes log-dialog-overlay-in {
   from { opacity: 0; }
@@ -1526,5 +2083,308 @@ watch(scope, () => {
 @keyframes change-row-fade {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 760px) {
+  .log-detail-dialog .el-dialog {
+    max-height: calc(100vh - 20px);
+  }
+  .log-detail-dialog .el-dialog__header,
+  .log-detail-dialog .el-dialog__body{
+    padding-left: 22px;
+    padding-right: 22px;
+  }
+  .log-detail-dialog .dlg-header {
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .log-detail-dialog .dlg-icon {
+    width: 58px;
+    height: 58px;
+    border-radius: 14px;
+  }
+  .log-detail-dialog .dlg-icon img {
+    width: 54px;
+    height: 54px;
+  }
+  .log-detail-dialog .dlg-summary {
+    font-size: 18px;
+  }
+  .log-detail-dialog .dlg-body {
+    max-height: calc(100vh - 174px);
+  }
+  .log-detail-dialog .dlg-meta-row {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 14px;
+  }
+  .log-detail-dialog .dlg-meta-item {
+    align-items: flex-start;
+    padding: 0;
+  }
+  .log-detail-dialog .dlg-meta-item + .dlg-meta-item {
+    border-left: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    padding-top: 10px;
+  }
+  .log-detail-dialog .dlg-change-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .log-detail-dialog .dlg-changes {
+    max-height: clamp(140px, calc(100vh - 360px), 360px);
+    padding: 10px 14px;
+  }
+}
+
+/* 顶部类型筛选下拉菜单：与资产表单 el-select 行为一致 */
+.messages-type-select-popper.el-popper {
+  border: 0;
+  border-radius: 6px;
+}
+html[data-mode='light'] .messages-type-select-popper.el-popper,
+html:not([data-mode='dark']) .messages-type-select-popper.el-popper {
+  background: #fff;
+  box-shadow: 0 10px 28px rgba(94, 74, 46, 0.16);
+}
+.messages-type-select-popper .el-popper__arrow::before {
+  border-color: transparent;
+  box-shadow: none;
+}
+html[data-mode='light'] .messages-type-select-popper .el-popper__arrow::before,
+html:not([data-mode='dark']) .messages-type-select-popper .el-popper__arrow::before {
+  background: #fff;
+}
+.messages-type-select-popper .el-select-dropdown {
+  border-radius: 6px;
+}
+.messages-type-select-popper .el-select-dropdown__list {
+  padding: 14px 0;
+}
+.messages-type-select-popper .el-select-dropdown__item {
+  height: 34px;
+  line-height: 34px;
+  padding: 0 8px;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}
+html[data-mode='light'] .messages-type-select-popper .el-select-dropdown__item,
+html:not([data-mode='dark']) .messages-type-select-popper .el-select-dropdown__item {
+  color: #6f7283;
+}
+.messages-type-select-popper .el-select-dropdown__item.is-hovering,
+.messages-type-select-popper .el-select-dropdown__item:hover {
+  background: rgba(var(--theme-primary-rgb), 0.08);
+  color: var(--theme-text-hover, #5e4a2e);
+}
+.messages-type-select-popper .el-select-dropdown__item.is-selected {
+  background: transparent;
+  color: var(--theme-primary-deep, #8a7355);
+  font-weight: 700;
+}
+html[data-mode='dark'] .messages-type-select-popper.el-popper {
+  background: var(--theme-surface);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.42);
+}
+html[data-mode='dark'] .messages-type-select-popper .el-popper__arrow::before {
+  background: var(--theme-surface);
+}
+html[data-mode='dark'] .messages-type-select-popper .el-select-dropdown__item {
+  color: var(--text-secondary);
+}
+html[data-mode='dark'] .messages-type-select-popper .el-select-dropdown__item.is-hovering,
+html[data-mode='dark'] .messages-type-select-popper .el-select-dropdown__item:hover {
+  background: var(--bg-hover);
+  color: var(--theme-text-hover);
+}
+html[data-mode='dark'] .messages-type-select-popper .el-select-dropdown__item.is-selected {
+  background: transparent;
+  color: var(--theme-primary-deep);
+  font-weight: 700;
+}
+</style>
+
+<!-- ============================================================
+     从 main.css 迁移过来的 Messages 页面全局样式（暗色模式覆盖等）
+     说明：scoped 样式无法用 html.dark .xxx 这种祖先选择器命中
+     scoped hash 的元素，因此放在非 scoped 块中。
+     ============================================================ -->
+<style scoped>
+/* ============================================================
+   Messages 页面：dark 模式下根容器使用页面底色
+   ============================================================ */
+html.dark .messages-page {
+  background: var(--bg-page) !important;
+  color: var(--text-primary) !important;
+}
+html.dark .messages-page .form-control input {
+  border-bottom-color: var(--theme-primary, #c5a47e) !important;
+  color: var(--theme-primary) !important;
+}
+html.dark .messages-page .form-control input:focus,
+html.dark .messages-page .form-control input:valid,
+html.dark .messages-page .form-control.is-filled input {
+  border-bottom-color: var(--theme-primary) !important;
+}
+html.dark .messages-page .form-control label span {
+  color: rgba(255, 255, 255, 0.55) !important;
+}
+html.dark .messages-page .form-control input:focus + label span,
+html.dark .messages-page .form-control input:valid + label span,
+html.dark .messages-page .form-control.is-filled label span {
+  color: var(--theme-primary) !important;
+}
+
+/* ============================================================
+   Messages 列表 / 卡片 / 标签 暗色覆盖
+   ============================================================ */
+html.dark .messages-page .scope-btn.active,
+html.dark .messages-page .actor,
+html.dark .messages-page .msg-summary {
+  color: var(--text-primary) !important;
+}
+html.dark .messages-page .meta-time {
+  color: var(--text-muted) !important;
+}
+html.dark .messages-page .msg-card {
+  background:
+    radial-gradient(circle at 12% 10%, rgba(var(--theme-primary-rgb), 0.20), transparent 36%),
+    radial-gradient(circle at 100% 100%, rgba(90, 110, 190, 0.12), transparent 42%),
+    linear-gradient(145deg, rgba(31, 33, 48, 0.86), rgba(13, 15, 25, 0.78)) !important;
+  border-color: rgba(255, 255, 255, 0.10) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 14px 34px rgba(0, 0, 0, 0.34) !important;
+}
+html.dark .messages-page .msg-card:hover {
+  border-color: rgba(var(--theme-primary-rgb), 0.52) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 18px 42px rgba(0, 0, 0, 0.44),
+    0 0 28px rgba(var(--theme-primary-rgb), 0.22) !important;
+}
+html.dark .messages-page .msg-card.unread {
+  background:
+    radial-gradient(circle at 12% 10%, rgba(var(--theme-primary-rgb), 0.38), transparent 38%),
+    radial-gradient(circle at 100% 100%, rgba(247, 189, 85, 0.14), transparent 40%),
+    linear-gradient(145deg, rgba(49, 39, 28, 0.88), rgba(15, 17, 26, 0.78)) !important;
+  border-color: rgba(var(--theme-primary-rgb), 0.68) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 16px 38px rgba(0, 0, 0, 0.44),
+    0 0 32px rgba(var(--theme-primary-rgb), 0.34) !important;
+}
+html.dark .messages-page .changes {
+  background: var(--theme-surface-muted) !important;
+  border-left-color: rgba(var(--theme-primary-rgb), 0.6) !important;
+}
+html.dark .messages-page .ch-before {
+  color: #ff8a8a !important;
+  background: rgba(245, 108, 108, 0.16) !important;
+}
+html.dark .messages-page .ch-after {
+  color: #6fd49b !important;
+  background: rgba(70, 167, 109, 0.18) !important;
+}
+
+/* action-tag：暗色下做反转，色块用半透明带主色，文字用更亮的同色 */
+html.dark .messages-page .action-tag,
+html.dark .log-detail-dialog .action-tag {
+  background: rgba(var(--theme-primary-rgb), 0.18) !important;
+  color: var(--theme-primary) !important;
+}
+html.dark .messages-page .tag-asset-create,
+html.dark .log-detail-dialog .tag-asset-create {
+  background: rgba(44, 122, 94, 0.22) !important;
+  color: #6fd49b !important;
+}
+html.dark .messages-page .tag-asset-update,
+html.dark .log-detail-dialog .tag-asset-update {
+  background: rgba(176, 138, 82, 0.22) !important;
+  color: #e0b974 !important;
+}
+html.dark .messages-page .tag-asset-delete,
+html.dark .messages-page .tag-file-delete,
+html.dark .log-detail-dialog .tag-asset-delete,
+html.dark .log-detail-dialog .tag-file-delete {
+  background: rgba(196, 69, 69, 0.22) !important;
+  color: #ff8a8a !important;
+}
+html.dark .messages-page .tag-asset-qr-regen,
+html.dark .messages-page .tag-file-upload,
+html.dark .log-detail-dialog .tag-asset-qr-regen,
+html.dark .log-detail-dialog .tag-file-upload {
+  background: rgba(79, 143, 216, 0.22) !important;
+  color: #7fb6ee !important;
+}
+html.dark .messages-page .tag-login,
+html.dark .messages-page .tag-logout,
+html.dark .log-detail-dialog .tag-login,
+html.dark .log-detail-dialog .tag-logout {
+  background: rgba(155, 110, 200, 0.22) !important;
+  color: #c9a8e6 !important;
+}
+
+/* ============================================================
+   日志详情弹窗 (.log-detail-dialog) 暗色覆盖
+   弹窗 teleport 到 body，必须用非 scoped 全局规则
+   ============================================================ */
+html.dark .log-detail-dialog .el-dialog {
+  background:
+    radial-gradient(circle at 14% 12%, rgba(var(--theme-primary-rgb), 0.22), transparent 34%),
+    radial-gradient(circle at 100% 100%, rgba(var(--theme-primary-rgb), 0.16), transparent 36%),
+    linear-gradient(145deg, rgba(24, 28, 42, 0.78), rgba(7, 12, 24, 0.84)) !important;
+  border-color: rgba(var(--theme-primary-rgb), 0.64) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 26px 70px rgba(0, 0, 0, 0.58),
+    0 0 0 1px rgba(var(--theme-primary-rgb), 0.12),
+    0 0 34px rgba(var(--theme-primary-rgb), 0.22) !important;
+  backdrop-filter: blur(22px) saturate(130%) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(130%) !important;
+}
+html.dark .log-detail-dialog .el-dialog__header {
+  background: transparent !important;
+  border-bottom-color: transparent !important;
+}
+html.dark .log-detail-dialog .dlg-actor {
+  color: #d7aa62 !important;
+}
+html.dark .log-detail-dialog .dlg-summary {
+  color: #e9edf7 !important;
+}
+html.dark .log-detail-dialog .dlg-meta-label,
+html.dark .log-detail-dialog .dlg-section-title,
+html.dark .log-detail-dialog .dlg-ch-arrow {
+  color: #d7aa62 !important;
+}
+html.dark .log-detail-dialog .dlg-meta-value {
+  color: #dfe4ef !important;
+}
+html.dark .log-detail-dialog .dlg-meta-row,
+html.dark .log-detail-dialog .dlg-empty {
+  background: rgba(12, 18, 31, 0.58) !important;
+  border-color: rgba(var(--theme-primary-rgb), 0.34) !important;
+}
+html.dark .log-detail-dialog .dlg-change-row {
+  background: transparent !important;
+}
+html.dark .log-detail-dialog .dlg-change-row:hover {
+  background: rgba(var(--theme-primary-rgb), 0.06) !important;
+}
+html.dark .log-detail-dialog .dlg-ch-before {
+  color: #f3a0a0 !important;
+  background: rgba(196, 69, 69, 0.22) !important;
+}
+html.dark .log-detail-dialog .dlg-ch-after {
+  color: #6fd49b !important;
+  background: rgba(44, 122, 94, 0.24) !important;
+}
+html.dark .log-detail-dialog .meta,
+html.dark .log-detail-dialog .json {
+  background: var(--theme-surface) !important;
+  color: var(--text-primary) !important;
 }
 </style>
