@@ -389,6 +389,10 @@ html.dark .el-picker__popper {
   background: var(--bg-card) !important;
   color: var(--text-primary) !important;
   border-color: var(--theme-border) !important;
+  padding: 24px;
+}
+html.dark .el-select-dropdown{
+  padding: 5px 2px;
 }
 html.dark .el-dialog__title,
 html.dark .el-message-box__title {

@@ -1127,73 +1127,74 @@ function onClosed() {
 /* 弹窗主体样式见底部全局 style 块（避开 scoped + append-to-body 的匹配问题） */
 
 .import-steps-bar {
+  --import-step-line: rgba(var(--theme-primary-rgb), 0.28);
+  --import-step-line-active: rgba(var(--theme-primary-rgb), 0.85);
+  --import-step-node-bg: rgba(255, 255, 255, 0.92);
+  --import-step-node-border: rgba(var(--theme-primary-rgb), 0.38);
+  --import-step-node-shadow: rgba(var(--theme-primary-rgb), 0.22);
+  counter-reset: import-step;
+  position: relative;
   display: flex;
-  align-items: stretch;
-  gap: 4px;
-  margin: 48px auto 22px;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0;
+  margin: 34px auto 28px;
   padding: 0;
-  width: 70%;
+  width: min(86%, 980px);
   list-style: none;
 }
 
 .import-step {
+  counter-increment: import-step;
   position: relative;
   flex: 1;
-  display: flex;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 54px minmax(0, auto);
   align-items: center;
   justify-content: center;
-  gap: 9px;
-  padding: 14px 20px 14px 30px;
-  font-size: 14.5px;
-  font-weight: 600;
-  letter-spacing: 0.2px;
-  line-height: 1;
+  column-gap: 12px;
+  padding: 0 18px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  line-height: 1.2;
   white-space: nowrap;
-  background: var(--theme-surface-muted, #f4ecdd);
   color: var(--theme-text-muted, #b6a482);
-  clip-path: polygon(
-    0 0,
-    calc(100% - 16px) 0,
-    100% 50%,
-    calc(100% - 16px) 100%,
-    0 100%,
-    16px 50%
-  );
-  transition: background 0.32s ease, color 0.32s ease, box-shadow 0.32s ease,
-    transform 0.32s ease;
+  isolation: isolate;
+  transition: color 0.28s ease;
 }
 
-.import-step:first-child {
-  padding-left: 20px;
-  clip-path: polygon(
-    0 0,
-    calc(100% - 16px) 0,
-    100% 50%,
-    calc(100% - 16px) 100%,
-    0 100%
-  );
+.import-step:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  top: 27px;
+  left: calc(50% + 42px);
+  width: calc(100% - 84px);
+  height: 2px;
+  background: linear-gradient(90deg, var(--import-step-line-active), var(--import-step-line));
+  box-shadow: 0 0 10px rgba(var(--theme-primary-rgb), 0.18);
+  transform: translateY(-50%);
+  pointer-events: none;
+  z-index: 0;
 }
 
-.import-step:last-child {
-  padding-right: 20px;
-  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 16px 50%);
+.import-step.is-current:not(:last-child)::before,
+.import-step.is-todo:not(:last-child)::before {
+  background: linear-gradient(90deg, rgba(155, 158, 176, 0.38), rgba(155, 158, 176, 0.12));
+  box-shadow: none;
 }
 
 .import-step.is-current {
-  background: linear-gradient(135deg, var(--theme-primary, #c5a47e) 0%, var(--theme-primary-deep, #8a7355) 100%);
-  color: #fff;
-  box-shadow: 0 6px 16px -10px rgba(var(--theme-primary-deep-rgb), 0.55);
-  animation: step-current-glow 2.4s ease-in-out infinite;
+  color: var(--theme-primary, #c5a47e);
 }
 
 .import-step.is-done {
-  background: linear-gradient(135deg, var(--theme-primary-light-5, #e6cfa9) 0%, var(--theme-primary, #c5a47e) 100%);
-  color: #fff;
+  color: var(--theme-primary-deep, #8a7355);
 }
 
 .import-step.is-todo {
-  background: var(--theme-surface-muted, #f4ecdd);
-  color: var(--theme-text-muted, #b6a482);
+  color: var(--text-muted, #9a9aa5);
 }
 
 /* ===== 进度条动效 ===== */
@@ -1202,31 +1203,44 @@ function onClosed() {
   z-index: 2;
 }
 
-/* 当前步骤：阴影呼吸 */
+/* 当前步骤：光晕呼吸 */
 @keyframes step-current-glow {
   0%,
   100% {
-    box-shadow: 0 4px 14px -10px rgba(var(--theme-primary-deep-rgb), 0.5);
+    box-shadow:
+      0 0 0 1px var(--import-step-node-border),
+      inset 0 0 12px rgba(var(--theme-primary-rgb), 0.2),
+      0 0 18px var(--import-step-node-shadow);
   }
   50% {
     box-shadow:
-      0 8px 22px -6px rgba(var(--theme-primary-deep-rgb), 0.85),
-      0 0 0 3px rgba(var(--theme-primary-rgb), 0.18);
+      0 0 0 1px rgba(var(--theme-primary-rgb), 0.82),
+      inset 0 0 16px rgba(var(--theme-primary-rgb), 0.32),
+      0 0 28px rgba(var(--theme-primary-rgb), 0.52);
   }
 }
 
-/* 当前步骤：图标脉冲 */
 .import-step.is-current .import-step-num {
-  animation: step-icon-pulse 1.8s ease-in-out infinite;
+  border-color: rgba(var(--theme-primary-rgb), 0.88);
+  color: var(--theme-primary, #c5a47e);
+  animation: step-current-glow 2.3s ease-in-out infinite;
 }
-@keyframes step-icon-pulse {
-  0%,
-  100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.1);
-  }
+
+.import-step.is-done .import-step-num {
+  border-color: rgba(var(--theme-primary-rgb), 0.72);
+  color: var(--theme-primary, #c5a47e);
+  box-shadow:
+    0 0 0 1px rgba(var(--theme-primary-rgb), 0.24),
+    inset 0 0 12px rgba(var(--theme-primary-rgb), 0.18),
+    0 0 20px rgba(var(--theme-primary-rgb), 0.3);
+}
+
+.import-step.is-todo .import-step-num {
+  border-color: rgba(150, 154, 174, 0.35);
+  color: var(--text-muted, #9a9aa5);
+  box-shadow:
+    0 0 0 1px rgba(150, 154, 174, 0.12),
+    inset 0 0 10px rgba(150, 154, 174, 0.08);
 }
 
 /* 当前步骤：入场弹动（切换时播放一次） */
@@ -1244,57 +1258,52 @@ function onClosed() {
   }
 }
 
-/* 已完成步骤：流光扫过（5s 一轮） */
-.import-step.is-done::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -45%;
-  width: 38%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.42) 50%,
-    transparent 100%
-  );
-  transform: skewX(-22deg);
-  pointer-events: none;
-  z-index: 1;
-  animation: step-sheen 5s ease-in-out infinite;
-}
-@keyframes step-sheen {
-  0%,
-  55% {
-    left: -45%;
-  }
-  82%,
-  100% {
-    left: 115%;
-  }
-}
-
 .import-step-num {
-  flex: 0 0 24px;
-  width: 24px;
-  height: 24px;
+  position: relative;
+  z-index: 1;
+  width: 54px;
+  height: 54px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: transparent;
-  border: none;
-  color: inherit;
-  transition: color 0.32s ease;
+  border: 1px solid var(--import-step-node-border);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 48%, rgba(255, 255, 255, 0.58), transparent 42%),
+    var(--import-step-node-bg);
+  color: var(--theme-primary-deep, #8a7355);
+  transition: border-color 0.28s ease, color 0.28s ease, box-shadow 0.28s ease;
 }
 
-.import-step.is-todo .import-step-num {
-  color: var(--theme-text-muted, #b6a482);
+.import-step-num::before {
+  content: '';
+  position: absolute;
+  inset: 7px;
+  border-radius: inherit;
+  border: 1px solid rgba(var(--theme-primary-rgb), 0.22);
+  box-shadow: inset 0 0 10px rgba(var(--theme-primary-rgb), 0.1);
+}
+
+.import-step-num::after {
+  content: counter(import-step);
+  position: absolute;
+  top: -8px;
+  right: -14px;
+  min-width: 14px;
+  color: var(--theme-primary, #c5a47e);
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
+  text-shadow: 0 0 10px rgba(var(--theme-primary-rgb), 0.55);
 }
 
 .import-step-num svg {
+  position: relative;
+  z-index: 1;
   display: block;
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
 }
 .import-step-num svg path {
   fill: currentColor;
@@ -1303,6 +1312,53 @@ function onClosed() {
 .import-step-label {
   position: relative;
   top: 0;
+  z-index: 1;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 72px;
+  color: currentColor;
+}
+
+.import-step-label::after {
+  content: '待进行';
+  color: var(--text-muted, #9a9aa5);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.import-step.is-current .import-step-label::after {
+  content: '进行中';
+  color: var(--theme-primary, #c5a47e);
+}
+
+.import-step.is-done .import-step-label::after {
+  content: '已完成';
+  color: var(--theme-text-muted, #b9a78a);
+}
+
+html.dark .import-steps-bar {
+  --import-step-line: rgba(255, 255, 255, 0.24);
+  --import-step-line-active: rgba(var(--theme-primary-rgb), 0.92);
+  --import-step-node-bg: rgba(24, 24, 32, 0.82);
+  --import-step-node-border: rgba(255, 255, 255, 0.22);
+  --import-step-node-shadow: rgba(var(--theme-primary-rgb), 0.42);
+}
+
+html.dark .import-step.is-current:not(:last-child)::before,
+html.dark .import-step.is-todo:not(:last-child)::before {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0.08));
+}
+
+html.dark .import-step-num {
+  background:
+    radial-gradient(circle at 50% 45%, rgba(255, 255, 255, 0.12), transparent 45%),
+    var(--import-step-node-bg);
+}
+
+html.dark .import-step.is-done .import-step-label::after {
+  color: rgba(255, 255, 255, 0.45);
 }
 
 .step-body {
@@ -1347,8 +1403,8 @@ function onClosed() {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  padding: 24px;
+  gap: 14px;
+  padding: 32px;
 }
 
 /* ===== 上传图标：静态展示，无触摸动画 ===== */
@@ -1369,11 +1425,6 @@ function onClosed() {
 .dropzone-icon svg {
   display: block;
 }
-.dropzone-inner {
-  gap: 14px;
-  padding: 32px;
-}
-
 .dropzone-title {
   font-size: 16px;
   font-weight: 600;
@@ -2098,7 +2149,6 @@ html.dark .el-dialog.fix-field-dialog > .el-dialog__body,
 html.dark .el-dialog.fix-field-dialog > .el-dialog__footer {
   background: var(--bg-card) !important;
 }
-html.dark .asset-import-dialog .preview-summary,
 html.dark .asset-import-dialog .preview-table,
 html.dark .asset-import-dialog .upload-dropzone .el-upload-dragger,
 html.dark .asset-import-dialog .dropzone-inner {
@@ -2107,6 +2157,7 @@ html.dark .asset-import-dialog .dropzone-inner {
 }
 html.dark .asset-import-dialog .preview-summary {
   background: var(--theme-surface-subtle) !important;
+  color: var(--text-primary) !important;
 }
 html.dark .asset-import-dialog .preview-table .el-table,
 html.dark .asset-import-dialog .preview-table .el-table__inner-wrapper,

@@ -26,15 +26,11 @@
           :class="{ active: isActive(tab) }"
           @click="onTabClick(tab)"
         >
-          <span class="nav-tab-text">
-            {{tab.label}}
-            <span
-              v-if="tab.key === 'message' && unreadCount > 0"
-              class="nav-badge"
-            >{{ unreadCount > 99 ? '99+' : unreadCount }}
-            </span>
-          </span>
-
+          <span class="nav-tab-text">{{ tab.label }}</span>
+          <span
+            v-if="tab.key === 'message' && unreadCount > 0"
+            class="nav-badge"
+          >{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
         </a>
       </nav>
 
@@ -338,24 +334,24 @@ html.dark .layout::before {
   width: 100%;
   display: flex;
   align-items: center;
-  justify-content: flex-start;
-  padding: 0 24px;
-  height: 68px !important;
+  justify-content: space-between;
+  padding: 0 32px;
+  height: 80px !important;
   box-shadow: none;
 }
 .header *{
   outline: none;
 }
 
-/* 左：品牌图片 */
+/* 左：品牌图片，整体再向右内缩一点 */
 .header-left {
   display: inline-flex;
   align-items: center;
   flex: 0 0 auto;
-  margin-left: 0;
+  margin-left: 24px;
 }
 .brand-img {
-  height: 36px;
+  height: 42px;
   width: auto;
   object-fit: contain;
   user-select: none;
@@ -365,69 +361,65 @@ html.dark .layout::before {
   transition: transform 0.25s ease, filter 0.25s ease;
 }
 .brand-img:hover {
-  transform: scale(1.04);
+  transform: scale(1.01);
   filter: drop-shadow(0 2px 6px rgba(var(--theme-primary-deep-rgb), 0.25));
 }
 .brand-img:active {
-  transform: scale(1.02);
+  transform: scale(1.04);
 }
 
-/* 中：tabs 跟随品牌右侧排列，使用竖线分隔 */
+/* 中：tabs 绝对定位居中，不受两侧宽度变化影响 */
 .header-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   display: inline-flex;
   align-items: center;
-  gap: 0;
-  margin-left: 24px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  gap: 14px;
+  font-family: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', 'STSong', 'SimSun', serif;
 }
 .nav-tab {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 70px;
-  height: 22px;
-  font-size: 14px;
-  font-weight: 500;
-  letter-spacing: 0.04em;
+  min-width: 84px;
+  height: 36px;
+  font-size: 17px;
+  letter-spacing: 3px;
   color: var(--text-secondary);
   text-decoration: none;
-  padding: 0 22px;
-  border-left: 1px solid rgba(var(--theme-primary-deep-rgb), 0.28);
+  padding: 0 12px;
   cursor: pointer;
-  transition: color 0.25s ease;
-}
-.nav-tab:last-child {
-  border-right: 1px solid rgba(var(--theme-primary-deep-rgb), 0.28);
+  transition: color 0.25s ease, font-size 0.25s ease, font-weight 0.25s ease;
 }
 .nav-tab:hover {
-  color: var(--theme-primary-deep, #d6a24a);
+  color: var(--theme-primary-deep, #8a7355);
 }
 .nav-tab.active {
-  color: var(--theme-primary-deep, #d6a24a);
+  color: var(--text-primary, #2f2f33);
+  font-size: 20px;
+  font-weight: 700;
 }
 .nav-tab-text {
   display: inline-block;
-  position: relative;
-}
-.nav-tab:last-child .nav-tab-text {
-  min-width: 47px;
 }
 .nav-badge {
   position: absolute;
-  top: -2px;
-  right: 0px;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
+  top: 2px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
   background: #ef665b;
   color: #fff;
   font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0;
-  line-height: 16px;
-  border-radius: 999px;
+  line-height: 18px;
+  border-radius: 9px;
   text-align: center;
   box-shadow: 0 0 0 2px var(--bg-page, #f5efe2);
   animation: badge-pop 0.3s ease;

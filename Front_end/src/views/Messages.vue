@@ -99,35 +99,35 @@
     >
       <template v-if="items.length > 0">
         <section v-if="showTypeRatio" class="type-ratio-card">
-          <div class="ratio-icon-wrap">
-            <img :src="imgLogTypeRatio" alt="" class="ratio-icon" />
-          </div>
-          <div class="ratio-main">
-            <div class="ratio-title-row">
-              <div>
-                <div class="ratio-title">日志类型占比</div>
-                <div class="ratio-sub">当前加载日志分布</div>
-              </div>
+          <div class="ratio-title-row">
+            <div class="ratio-heading">
+              <span class="ratio-title">日志类型占比</span>
               <span class="ratio-total">{{ typeRatioTotal }} 条日志</span>
             </div>
-            <div class="ratio-bar" aria-hidden="true">
-              <span
-                v-for="stat in typeRatioStats"
-                :key="stat.value"
-                class="ratio-bar-segment"
-                :style="{ width: `${stat.percent}%`, backgroundColor: stat.color }"
-              ></span>
-            </div>
+            <span class="ratio-title-line"></span>
           </div>
-          <div class="ratio-legend">
+          <div class="ratio-metrics">
             <div
               v-for="stat in typeRatioStats"
               :key="stat.value"
-              class="ratio-legend-item"
+              class="ratio-metric"
+              :style="{
+                '--ratio-color': stat.color,
+                '--ratio-angle': `${Math.min(100, Math.max(0, stat.percent)) * 3.6}deg`,
+              }"
             >
-              <span class="ratio-dot" :style="{ backgroundColor: stat.color }"></span>
-              <span class="ratio-name">{{ stat.label }}</span>
-              <span class="ratio-percent">{{ stat.percent.toFixed(1) }}%</span>
+              <div class="ratio-copy">
+                <span class="ratio-label">
+                  <span class="ratio-dot"></span>
+                  <span class="ratio-name">{{ stat.label }}</span>
+                </span>
+                <span class="ratio-percent">{{ stat.percent.toFixed(1) }}%</span>
+              </div>
+              <div class="ratio-ring" aria-hidden="true">
+                <div class="ratio-ring-core">
+                  <span v-html="actionIcon(stat.value)"></span>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -209,11 +209,12 @@
     <!-- 分页 -->
     <div v-if="total > pageSize" class="msg-pager">
       <el-pagination
-        v-model:current-page="page"
+        :current-page="page"
         :page-size="pageSize"
         :total="total"
         layout="prev, pager, next, jumper, total"
         background
+        @update:current-page="page = $event"
         @current-change="reload(false)"
       />
     </div>
@@ -222,7 +223,7 @@
     <el-dialog
       v-model="detailOpen"
       :show-close="true"
-      width="720px"
+      width="760px"
       align-center
       append-to-body
       class="log-detail-dialog"
@@ -273,6 +274,12 @@
             <span class="dlg-section-count">{{ detailRow.changes.length }}</span>
           </div>
           <div class="dlg-changes">
+            <div class="dlg-change-head" aria-hidden="true">
+              <span>字段名称</span>
+              <span>变更前</span>
+              <span></span>
+              <span>变更后</span>
+            </div>
             <div
               v-for="(c, i) in detailRow.changes"
               :key="i"
@@ -284,7 +291,7 @@
                 <svg viewBox="0 0 24 24" width="14" height="14" class="dlg-ch-arrow" aria-hidden="true">
                   <path fill="currentColor" d="M16.01 11H4v2h12.01v3L20 12l-3.99-4z"/>
                 </svg>
-                <span class="dlg-ch-after">{{ c.after ?? '空' }}</span>
+                <span class="dlg-ch-after">{{ c.after || '空' }}</span>
               </div>
             </div>
           </div>
@@ -311,7 +318,6 @@ import imgFileUpload from '../img/上传文件.png'
 import imgFileDelete from '../img/删除文件.png'
 import imgLogin from '../img/登入.png'
 import imgLogout from '../img/登出.png'
-import imgLogTypeRatio from '../img/log_type_ratio_icon.png'
 
 const ACTION_IMAGE_MAP = {
   'asset.create': imgAssetCreate,
@@ -357,10 +363,10 @@ const actionOptions = [
 const TYPE_FILTER_ALL = '__all__'
 const TYPE_RATIO_COLORS = [
   '#5bc487',
-  '#426da8',
-  '#7f43b8',
+  '#538fe2',
+  '#9c66d0',
   '#f0cf59',
-  '#6f7f97',
+  '#99a4b5',
   '#e6ddd0',
   '#38a6c7',
   '#d8874d',
@@ -1075,100 +1081,104 @@ html.dark .type-select :deep(.el-select__wrapper.is-focused .el-select__caret) {
   width: 100%;
   margin: 0 auto;
 }
-/* -------- 日志类型占比卡片：基础布局（主题无关） -------- */
+/* -------- 日志类型占比卡片：圆环指标组 -------- */
 .type-ratio-card {
   position: relative;
-  display: grid;
-  grid-template-columns: 78px minmax(0, 1fr) minmax(300px, 0.92fr);
-  align-items: center;
-  gap: 24px;
-  padding: 18px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 8px 0 22px;
   overflow: hidden;
-  border-radius: 14px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 .type-ratio-card::before {
   content: '';
   position: absolute;
-  inset: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
   pointer-events: none;
-}
-.ratio-icon-wrap,
-.ratio-main,
-.ratio-legend {
-  position: relative;
-  z-index: 1;
-}
-.ratio-icon-wrap {
-  width: 64px;
-  height: 64px;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-}
-.ratio-icon {
-  width: 54px;
-  height: 54px;
-  transform-origin: center;
-  transform: scale(1.8);
-  overflow: hidden;
-  object-fit: contain;
-  display: block;
+  background: linear-gradient(90deg, transparent, rgba(var(--theme-primary-rgb), 0.22), transparent);
 }
 .ratio-title-row {
+  position: relative;
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 14px;
-  margin-bottom: 14px;
+  align-items: center;
+  gap: 16px;
+  min-height: 22px;
+}
+.ratio-heading {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
 }
 .ratio-title {
-  font-size: 15px;
+  color: var(--theme-primary-deep, #8a7355);
+  font-size: 14px;
   font-weight: 800;
   letter-spacing: 0.5px;
 }
-.ratio-sub,
 .ratio-total {
-  margin-top: 4px;
+  position: relative;
+  color: var(--theme-text-muted, #b9a78a);
   font-size: 12px;
-}
-.ratio-total {
-  flex-shrink: 0;
   font-weight: 600;
 }
-.ratio-bar {
-  display: flex;
-  width: 100%;
-  height: 14px;
-  overflow: hidden;
-  border-radius: 999px;
+.ratio-total::before {
+  content: '';
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  margin: 0 7px 2px 0;
+  border-radius: 50%;
+  background: var(--theme-primary, #c5a47e);
+  box-shadow: 0 0 8px rgba(var(--theme-primary-rgb), 0.55);
 }
-.ratio-bar-segment {
-  min-width: 4px;
-  height: 100%;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.22),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.12);
+.ratio-title-line {
+  flex: 1 1 auto;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(var(--theme-primary-rgb), 0.28), transparent);
 }
-.ratio-legend {
+.ratio-metrics {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px 22px;
-}
-.ratio-legend-item {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 18px;
   align-items: center;
-  gap: 10px;
+}
+.ratio-metric {
+  --ratio-color: var(--theme-primary, #c5a47e);
+  --ratio-angle: 0deg;
+  display: grid;
+  grid-template-columns: minmax(72px, max-content) 66px;
+  align-items: center;
+  justify-content: center;
+  gap: 35px;
   min-width: 0;
+}
+.ratio-copy {
+  min-width: 0;
+}
+.ratio-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 100%;
+  color: var(--theme-text-muted, #b9a78a);
   font-size: 12px;
+  font-weight: 700;
 }
 .ratio-dot {
-  width: 7px;
-  height: 7px;
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  box-shadow: 0 0 10px currentColor;
+  background: var(--ratio-color);
+  box-shadow: 0 0 10px var(--ratio-color);
 }
 .ratio-name {
   overflow: hidden;
@@ -1176,61 +1186,61 @@ html.dark .type-select :deep(.el-select__wrapper.is-focused .el-select__caret) {
   white-space: nowrap;
 }
 .ratio-percent {
+  display: block;
+  margin-top: 8px;
+  margin-left: 13px;
+  color: var(--ratio-color);
   font-family: 'SF Mono', Menlo, Consolas, monospace;
-  font-size: 11.5px;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
 }
-
-/* -------- 白天模式：参考系统主色（金棕色），与日志卡片风格一致 -------- */
-.type-ratio-card {
-  border: 1px solid rgba(var(--theme-primary-rgb), 0.28);
+.ratio-ring {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 66px;
+  height: 66px;
+  border-radius: 50%;
   background:
-    radial-gradient(circle at 14% 12%, rgba(var(--theme-primary-rgb), 0.22), transparent 38%),
-    linear-gradient(135deg, var(--theme-surface) 0%, var(--bg-card) 55%, var(--theme-surface-subtle) 100%);
+    conic-gradient(var(--ratio-color) 0deg var(--ratio-angle), rgba(var(--theme-primary-rgb), 0.12) var(--ratio-angle) 360deg);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.55),
-    0 10px 28px rgba(var(--theme-primary-deep-rgb), 0.10);
+    0 0 18px color-mix(in srgb, var(--ratio-color) 34%, transparent),
+    inset 0 0 12px rgba(0, 0, 0, 0.12);
 }
-.type-ratio-card::before {
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.32), transparent 38%),
-    radial-gradient(circle at 100% 100%, rgba(var(--theme-primary-rgb), 0.20), transparent 38%);
-  opacity: 0.75;
+.ratio-ring::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  background: var(--bg-card, #fff);
+  box-shadow: inset 0 0 0 1px rgba(var(--theme-primary-rgb), 0.12);
 }
-.ratio-icon-wrap {
-  background:
-    radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.85) 0%, rgba(var(--theme-primary-rgb), 0.22) 70%);
-  box-shadow:
-    inset 0 0 16px rgba(var(--theme-primary-rgb), 0.20),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6),
-    0 4px 12px rgba(var(--theme-primary-deep-rgb), 0.14);
+.ratio-ring::after {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  border: 1px solid rgba(var(--theme-primary-rgb), 0.12);
+  border-top-color: color-mix(in srgb, var(--ratio-color) 55%, transparent);
+  opacity: 0.9;
 }
-.ratio-icon {
-  filter: drop-shadow(0 1px 2px rgba(var(--theme-primary-deep-rgb), 0.25));
+.ratio-ring-core {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  color: var(--ratio-color);
+  border-radius: 50%;
+  background: rgba(var(--theme-primary-rgb), 0.08);
 }
-.ratio-title {
-  color: var(--theme-primary-deep, #8a7355);
-}
-.ratio-sub {
-  color: var(--theme-text-muted, #b9a78a);
-}
-.ratio-total {
-  color: var(--theme-text-hover, #6e5a40);
-}
-.ratio-bar {
-  background: rgba(var(--theme-primary-rgb), 0.14);
-  box-shadow:
-    inset 0 1px 2px rgba(var(--theme-primary-deep-rgb), 0.20),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.4);
-}
-.ratio-legend-item {
-  color: var(--text-primary, #2f2f33);
-}
-.ratio-name {
-  color: var(--theme-primary-deep, #8a7355);
-}
-.ratio-percent {
-  color: var(--theme-primary-deep, #8a7355);
+.ratio-ring-core :deep(svg) {
+  width: 22px;
+  height: 22px;
+  display: block;
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--ratio-color) 45%, transparent));
 }
 
 /* -------- 黑夜模式：保留原本的深色玻璃质感（已迁移到下方非 scoped 块） -------- */
@@ -1469,7 +1479,6 @@ html.dark .type-select :deep(.el-select__wrapper.is-focused .el-select__caret) {
 }
 .tag-asset-create { background: #e1f3e8; color: #2c7a5e; }
 .tag-asset-update { background: #fff3d9; color: #b08a52; }
-.tag-asset-delete { background: #fde4e4; color: #c44545; }
 .tag-asset-qr-regen { background: #e6f0fb; color: #1f5fa8; }
 .tag-file-upload { background: #e6f0fb; color: #1f5fa8; }
 .tag-file-delete { background: #fde4e4; color: #c44545; }
@@ -1584,12 +1593,8 @@ html.dark .type-select :deep(.el-select__wrapper.is-focused .el-select__caret) {
 /* msg-card 暗色样式已迁移到下方非 scoped 块 */
 
 @media (max-width: 1180px) {
-  .type-ratio-card {
-    grid-template-columns: 70px minmax(0, 1fr);
-  }
-  .ratio-legend {
-    grid-column: 1 / -1;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  .ratio-metrics {
+    grid-template-columns: repeat(3, minmax(150px, 1fr));
   }
   .day-group {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1597,13 +1602,7 @@ html.dark .type-select :deep(.el-select__wrapper.is-focused .el-select__caret) {
 }
 
 @media (max-width: 860px) {
-  .type-ratio-card {
-    grid-template-columns: 1fr;
-  }
-  .ratio-icon-wrap {
-    display: none;
-  }
-  .ratio-legend {
+  .ratio-metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .day-group {
@@ -1613,7 +1612,7 @@ html.dark .type-select :deep(.el-select__wrapper.is-focused .el-select__caret) {
 
 @media (max-width: 560px) {
   .day-group,
-  .ratio-legend {
+  .ratio-metrics {
     grid-template-columns: 1fr;
   }
 }
@@ -1653,66 +1652,45 @@ html.dark .type-select :deep(.el-select__wrapper.is-focused .el-select__caret) {
   justify-content: flex-end;
   padding: 8px 4px 4px;
 }
-</style>
 
-<!-- 弹窗内部样式：因 el-dialog 通过 teleport 渲染到 body，使用非 scoped -->
-<style scoped>
-html.dark .messages-page .type-ratio-card {
-  border-color: rgba(255, 255, 255, 0.10);
-  background:
-    radial-gradient(120% 140% at 0% 50%, rgba(var(--theme-primary-rgb), 0.12) 0%, transparent 55%),
-    radial-gradient(80% 120% at 100% 50%, rgba(110, 90, 220, 0.12) 0%, transparent 60%),
-    linear-gradient(135deg, #1f2233 0%, #181a28 45%, #11131c 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 16px 38px rgba(0, 0, 0, 0.5);
-}
+/* 日志类型占比：暗色圆环视觉 */
 html.dark .messages-page .type-ratio-card::before {
-  background:
-    radial-gradient(circle at 0% 0%, rgba(255, 255, 255, 0.07), transparent 40%),
-    radial-gradient(circle at 100% 100%, rgba(0, 0, 0, 0.35), transparent 50%);
-  opacity: 1;
-}
-html.dark .messages-page .ratio-icon-wrap {
-  background:
-    radial-gradient(circle at 35% 30%, rgba(var(--theme-primary-rgb), 0.18) 0%, rgba(0, 0, 0, 0.55) 70%);
-  box-shadow:
-    inset 0 0 18px rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    0 0 22px rgba(var(--theme-primary-rgb), 0.18);
-}
-html.dark .messages-page .ratio-icon {
-  filter: drop-shadow(0 0 10px rgba(var(--theme-primary-rgb), 0.42));
+  background: linear-gradient(90deg, transparent, rgba(var(--theme-primary-rgb), 0.18), transparent);
 }
 html.dark .messages-page .ratio-title {
-  color: #eef0f7;
+  color: rgba(246, 238, 220, 0.9);
 }
-html.dark .messages-page .ratio-sub {
+html.dark .messages-page .ratio-total,
+html.dark .messages-page .ratio-label {
   color: rgba(232, 234, 242, 0.58);
 }
-html.dark .messages-page .ratio-total {
-  color: rgba(232, 234, 242, 0.78);
+html.dark .messages-page .ratio-title-line {
+  background: linear-gradient(90deg, rgba(var(--theme-primary-rgb), 0.24), transparent);
 }
-html.dark .messages-page .ratio-bar {
-  background: rgba(0, 0, 0, 0.4);
+html.dark .messages-page .ratio-ring {
+  background:
+    conic-gradient(var(--ratio-color) 0deg var(--ratio-angle), rgba(255, 255, 255, 0.075) var(--ratio-angle) 360deg);
   box-shadow:
-    inset 0 1px 3px rgba(0, 0, 0, 0.55),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.04);
+    0 0 20px color-mix(in srgb, var(--ratio-color) 36%, transparent),
+    inset 0 0 16px rgba(0, 0, 0, 0.48);
 }
-html.dark .messages-page .ratio-bar-segment {
+html.dark .messages-page .ratio-ring::before {
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.06), rgba(0, 0, 0, 0.34)),
+    rgba(14, 17, 28, 0.96);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.18),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.18);
+    inset 0 0 0 1px rgba(255, 255, 255, 0.045),
+    inset 0 0 18px rgba(0, 0, 0, 0.58);
 }
-html.dark .messages-page .ratio-legend-item {
-  color: rgba(232, 234, 242, 0.82);
+html.dark .messages-page .ratio-ring::after {
+  border-color: rgba(255, 255, 255, 0.08);
+  border-top-color: color-mix(in srgb, var(--ratio-color) 68%, transparent);
 }
-html.dark .messages-page .ratio-name {
-  color: #e0b974;
+html.dark .messages-page .ratio-ring-core {
+  background: rgba(255, 255, 255, 0.045);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
-html.dark .messages-page .ratio-percent {
-  color: #e0b974;
-}
+
 html.dark .messages-page .msg-card::before {
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent 38%),
@@ -1738,36 +1716,36 @@ html.dark .messages-page .unread-badge {
   flex-direction: column;
   max-width: calc(100vw - 32px);
   max-height: calc(100vh - 36px);
+  border: 1px solid rgba(var(--theme-primary-rgb), 0.38);
   border-radius: 18px;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 14% 12%, rgba(var(--theme-primary-rgb), 0.22), transparent 34%),
-    radial-gradient(circle at 100% 100%, rgba(var(--theme-primary-rgb), 0.16), transparent 36%),
-    linear-gradient(145deg, rgba(24, 28, 42, 0.78), rgba(7, 12, 24, 0.84));
-  border: 1px solid rgba(var(--theme-primary-rgb), 0.64);
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 26px 70px rgba(0, 0, 0, 0.58),
-    0 0 0 1px rgba(var(--theme-primary-rgb), 0.12),
-    0 0 34px rgba(var(--theme-primary-rgb), 0.22);
+  background: var(--bg-card);
+  box-shadow: 0 26px 70px rgba(0, 0, 0, 0.24);
   backdrop-filter: blur(22px) saturate(130%);
   -webkit-backdrop-filter: blur(22px) saturate(130%);
 }
-.log-detail-dialog .el-dialog::before {
+.log-detail-dialog .el-dialog::before,
+.log-detail-dialog .el-dialog::after {
   content: '';
   position: absolute;
-  inset: 0;
   pointer-events: none;
+}
+.log-detail-dialog .el-dialog::before {
+  inset: 0;
   border-radius: inherit;
   background:
-    linear-gradient(90deg, transparent 3%, rgba(247, 189, 85, 0.55) 50%, transparent 97%) top / 100% 1px no-repeat,
-    linear-gradient(90deg, transparent 3%, rgba(247, 189, 85, 0.45) 50%, transparent 97%) bottom / 100% 1px no-repeat;
+    linear-gradient(90deg, transparent 4%, rgba(var(--theme-primary-rgb), 0.5) 50%, transparent 96%) top / 100% 1px no-repeat,
+    linear-gradient(90deg, transparent 4%, rgba(var(--theme-primary-rgb), 0.34) 50%, transparent 96%) bottom / 100% 1px no-repeat;
   opacity: 0.9;
+}
+.log-detail-dialog .el-dialog::after {
+  inset: 14px;
+  border: 1px solid rgba(var(--theme-primary-rgb), 0.08);
+  border-radius: 14px;
 }
 .log-detail-dialog .el-dialog__header {
   flex-shrink: 0;
-  padding: 24px 8px 24px;
+  padding: 26px 28px 18px;
   margin-right: 0;
   background: transparent;
   border-bottom: 0;
@@ -1776,43 +1754,46 @@ html.dark .messages-page .unread-badge {
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  padding: 0 8px 24px;
+  padding: 0 28px 28px;
 }
 .log-detail-dialog .el-dialog__headerbtn {
-  top: 28px;
-  right: 28px;
+  top: 24px;
+  right: 24px;
   width: 34px;
   height: 34px;
 }
 .log-detail-dialog .el-dialog__close {
-  color: rgba(232, 234, 242, 0.78);
+  color: var(--text-secondary);
   font-size: 24px;
   transition: color 0.18s ease, transform 0.18s ease;
 }
 .log-detail-dialog .el-dialog__headerbtn:hover .el-dialog__close {
-  color: #e7c382;
+  color: var(--theme-primary);
   transform: rotate(90deg);
 }
 .log-detail-dialog .dlg-header {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 18px;
+  padding-right: 36px;
 }
 .log-detail-dialog .dlg-icon {
   flex-shrink: 0;
-  width: 82px;
-  height: 82px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 18px;
+  width: 74px;
+  height: 74px;
+  border: 1px solid rgba(var(--theme-primary-rgb), 0.22);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.025);
 }
 .log-detail-dialog .dlg-icon img {
-  width: 76px;
-  height: 76px;
-  object-fit: contain;
   display: block;
-  filter: drop-shadow(0 0 16px rgba(var(--theme-primary-rgb), 0.50));
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  filter: none;
 }
 .log-detail-dialog .dlg-title-wrap {
   flex: 1;
@@ -1821,40 +1802,37 @@ html.dark .messages-page .unread-badge {
 .log-detail-dialog .dlg-title-line {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
+  gap: 11px;
+  margin-bottom: 7px;
 }
 .log-detail-dialog .dlg-actor {
-  font-size: 16px;
-  font-weight: 500;
-  color: #d7aa62;
-}
-.log-detail-dialog .action-tag {
   font-size: 15px;
   font-weight: 700;
-  padding: 7px 14px;
-  border-radius: 999px;
-  letter-spacing: 0.5px;
-  border: 1px solid rgba(94, 219, 151, 0.35);
-  background: rgba(46, 160, 109, 0.24);
-  color: #67d69a;
+  color: var(--theme-primary-deep, #8a7355);
 }
-.log-detail-dialog .tag-asset-create { background: rgba(44, 122, 94, 0.28); color: #6fd49b; }
-.log-detail-dialog .tag-asset-update { background: rgba(176, 138, 82, 0.28); color: #e0b974; }
-.log-detail-dialog .tag-asset-delete { background: rgba(196, 69, 69, 0.28); color: #ff8a8a; }
-.log-detail-dialog .tag-asset-qr-regen { background: rgba(79, 143, 216, 0.28); color: #7fb6ee; }
-.log-detail-dialog .tag-file-upload { background: rgba(79, 143, 216, 0.28); color: #7fb6ee; }
-.log-detail-dialog .tag-file-delete { background: rgba(196, 69, 69, 0.28); color: #ff8a8a; }
-.log-detail-dialog .tag-login { background: rgba(155, 110, 200, 0.28); color: #c9a8e6; }
-.log-detail-dialog .tag-logout { background: rgba(155, 110, 200, 0.28); color: #c9a8e6; }
+.log-detail-dialog .tag-asset-create { background: rgba(44, 122, 94, 0.28); color: #3f9d68; }
+.log-detail-dialog .tag-asset-update { background: rgba(176, 138, 82, 0.24); color: #b7833f; }
+.log-detail-dialog .tag-asset-delete { background: rgba(196, 69, 69, 0.2); color: #c45a5a; }
+.log-detail-dialog .tag-asset-qr-regen { background: rgba(79, 143, 216, 0.22); color: #4f8fd8; }
+.log-detail-dialog .tag-file-upload { background: rgba(79, 143, 216, 0.22); color: #4f8fd8; }
+.log-detail-dialog .tag-file-delete { background: rgba(196, 69, 69, 0.2); color: #c45a5a; }
+.log-detail-dialog .tag-login { background: rgba(155, 110, 200, 0.22); color: #9b6ec8; }
+.log-detail-dialog .tag-logout { background: rgba(155, 110, 200, 0.22); color: #9b6ec8; }
 .log-detail-dialog .dlg-summary {
-  font-size: 23px;
-  color: #e9edf7;
-  line-height: 1.45;
+  font-size: 18px;
+  line-height: 1.25;
   font-weight: 600;
   letter-spacing: 0.3px;
+  color: var(--text-primary);
 }
-
+.log-detail-dialog .dlg-title-wrap::after {
+  content: '这是一次操作日志的详细信息，记录了本次操作涉及的字段变更。';
+  display: block;
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
 .log-detail-dialog .dlg-body {
   display: flex;
   flex-direction: column;
@@ -1866,111 +1844,106 @@ html.dark .messages-page .unread-badge {
   flex-shrink: 0;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0;
-  padding: 14px 0;
-  background: rgba(12, 18, 31, 0.58);
-  border: 1px solid rgba(var(--theme-primary-rgb), 0.34);
-  border-radius: 10px;
-  margin-bottom: 28px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 10px 28px rgba(0, 0, 0, 0.20);
+  gap: 12px;
+  margin: 8px 0 20px;
 }
 .log-detail-dialog .dlg-meta-item {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 8px;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 9px;
   min-width: 0;
-  padding: 0 22px;
+  min-height: 66px;
+  padding: 0px 0px 0px 74px;
   font-size: 14px;
+  border: 1px solid rgba(var(--theme-primary-rgb), 0.18);
+  border-radius: 12px;
 }
 .log-detail-dialog .dlg-meta-item + .dlg-meta-item {
-  border-left: 1px solid rgba(255, 255, 255, 0.07);
+  border-left: 1px solid rgba(var(--theme-primary-rgb), 0.18);
 }
 .log-detail-dialog .dlg-meta-label {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: #d7aa62;
+  color: var(--theme-primary-deep, #8a7355);
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.4px;
 }
 .log-detail-dialog .dlg-meta-label::before {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  color: #d7aa62;
-  font-size: 14px;
+  position: absolute;
+  left: -50px;
+  top: 80%;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  color: var(--theme-primary, #c5a47e);
+  font-size: 23px;
+  line-height: 1;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  transform: translateY(-50%);
 }
-.log-detail-dialog .dlg-meta-item:nth-child(1) .dlg-meta-label::before {
-  content: '◷';
-}
-.log-detail-dialog .dlg-meta-item:nth-child(2) .dlg-meta-label::before {
-  content: '◉';
-}
-.log-detail-dialog .dlg-meta-item:nth-child(3) .dlg-meta-label::before {
-  content: '♙';
-}
+.log-detail-dialog .dlg-meta-item:nth-child(1) .dlg-meta-label::before { content: '◷'; }
+.log-detail-dialog .dlg-meta-item:nth-child(2) .dlg-meta-label::before { content: '◉'; }
+.log-detail-dialog .dlg-meta-item:nth-child(3) .dlg-meta-label::before { content: '♙'; }
 .log-detail-dialog .dlg-meta-value {
   max-width: 100%;
   overflow: hidden;
-  color: #dfe4ef;
+  color: var(--text-primary);
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 14px;
 }
 .log-detail-dialog .dlg-meta-value.mono {
   font-family: 'SF Mono', Menlo, Consolas, monospace;
   font-size: 13px;
 }
-
 .log-detail-dialog .dlg-section-title {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  font-size: 17px;
-  font-weight: 800;
-  color: #d7aa62;
-  margin-bottom: 14px;
-  padding-bottom: 0;
-  border-bottom: 0;
   width: 100%;
+  margin-bottom: 12px;
+  padding-bottom: 0;
+  color: var(--theme-primary-deep, #8a7355);
+  font-size: 14px;
+  font-weight: 800;
+  border-bottom: 0;
 }
 .log-detail-dialog .dlg-section-count {
-  background: rgba(var(--theme-primary-rgb), 0.22);
-  color: #e7c382;
+  min-width: 18px;
+  padding: 2px 6px;
+  color: var(--theme-primary-deep, #8a7355);
   font-size: 12px;
   font-weight: 700;
-  padding: 3px 10px;
-  border-radius: 999px;
-  min-width: 18px;
   text-align: center;
+  background: rgba(var(--theme-primary-rgb), 0.16);
+  border: 1px solid rgba(var(--theme-primary-rgb), 0.22);
+  border-radius: 999px;
 }
-
 .log-detail-dialog .dlg-changes {
   flex: 1;
   min-height: 120px;
+  max-height: clamp(220px, calc(100vh - 410px), 430px);
   display: flex;
   flex-direction: column;
   gap: 0;
-  max-height: clamp(140px, calc(100vh - 410px), 430px);
   overflow-y: auto;
-  padding: 12px 24px;
-  background: rgba(12, 18, 31, 0.52);
-  border: 1px solid rgba(var(--theme-primary-rgb), 0.32);
+  padding: 0;
+  border: 1px solid rgba(var(--theme-primary-rgb), 0.18);
   border-radius: 10px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    0 12px 34px rgba(0, 0, 0, 0.24);
+  background: var(--theme-surface-subtle, rgba(255, 255, 255, 0.78));
 }
-.log-detail-dialog .dlg-changes::-webkit-scrollbar {
-  width: 7px;
-}
+.log-detail-dialog .dlg-changes::-webkit-scrollbar { width: 7px; }
 .log-detail-dialog .dlg-changes::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(0, 0, 0, 0.04);
   border-radius: 999px;
 }
 .log-detail-dialog .dlg-changes::-webkit-scrollbar-thumb {
@@ -1980,68 +1953,81 @@ html.dark .messages-page .unread-badge {
 .log-detail-dialog .dlg-changes::-webkit-scrollbar-thumb:hover {
   background: rgba(var(--theme-primary-rgb), 0.66);
 }
+.log-detail-dialog .dlg-change-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1.15fr 1fr 42px 1.55fr;
+  gap: 14px;
+  padding: 13px 20px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 700;
+  background: var(--theme-surface, #fff);
+  border-bottom: 1px solid rgba(var(--theme-primary-rgb), 0.14);
+}
+.log-detail-dialog .dlg-change-head > span {
+  justify-self: start;
+  text-align: left;
+}
 .log-detail-dialog .dlg-change-row {
   display: grid;
-  grid-template-columns: 130px 1fr;
+  grid-template-columns: 1.15fr 1fr 42px 1.55fr;
   align-items: center;
-  gap: 24px;
-  padding: 11px 4px;
-  background: transparent;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  gap: 14px;
+  min-height: 40px;
+  padding: 0 20px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 0;
+  background: transparent;
 }
-.log-detail-dialog .dlg-change-row:last-child {
-  border-bottom: 0;
-}
-.log-detail-dialog .dlg-change-row:hover {
-  background: rgba(var(--theme-primary-rgb), 0.06);
-}
+.log-detail-dialog .dlg-change-row:last-child { border-bottom: 0; }
+.log-detail-dialog .dlg-change-row:hover { background: rgba(var(--theme-primary-rgb), 0.06); }
 .log-detail-dialog .dlg-change-label {
-  font-size: 15px;
-  color: #d7c29a;
+  justify-self: start;
+  color: var(--text-primary);
+  font-size: 14px;
   font-weight: 700;
+  text-align: left;
 }
 .log-detail-dialog .dlg-change-flow {
-  display: flex;
+  display: contents;
   align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
   font-size: 14px;
 }
-.log-detail-dialog .dlg-ch-before {
-  color: #f3a0a0;
-  text-decoration: line-through;
-  background: rgba(196, 69, 69, 0.22);
-  padding: 5px 14px;
-  border-radius: 5px;
-  max-width: 240px;
+.log-detail-dialog .dlg-ch-before,
+.log-detail-dialog .dlg-ch-after {
+  justify-self: start;
+  max-width: 100%;
   overflow: hidden;
+  padding: 4px 11px;
+  font-size: 13px;
+  font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: 700;
+  border-radius: 5px;
+}
+.log-detail-dialog .dlg-ch-before {
+  color: #c45a5a;
+  text-decoration: none;
+  background: rgba(196, 69, 69, 0.16);
 }
 .log-detail-dialog .dlg-ch-after {
-  color: #6fd49b;
-  background: rgba(44, 122, 94, 0.24);
-  padding: 5px 14px;
-  border-radius: 5px;
-  font-weight: 600;
-  max-width: 280px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  color: #3f9d68;
+  background: rgba(44, 122, 94, 0.18);
 }
 .log-detail-dialog .dlg-ch-arrow {
-  color: #d7aa62;
+  color: var(--theme-primary-deep, #8a7355);
   flex-shrink: 0;
 }
 .log-detail-dialog .dlg-empty {
   padding: 30px;
   text-align: center;
-  color: rgba(232, 234, 242, 0.66);
+  color: var(--text-secondary);
   font-size: 14px;
-  background: rgba(12, 18, 31, 0.52);
-  border: 1px solid rgba(var(--theme-primary-rgb), 0.28);
+  background: var(--theme-surface-subtle, rgba(255, 255, 255, 0.78));
+  border: 1px solid rgba(var(--theme-primary-rgb), 0.2);
   border-radius: 10px;
 }
 
@@ -2085,6 +2071,148 @@ html.dark .messages-page .unread-badge {
   to   { opacity: 1; transform: translateY(0); }
 }
 
+/* ===================== 黑夜模式：日志详情弹窗重构 ===================== */
+html.dark .log-detail-dialog .el-dialog {
+  --log-dialog-border: rgba(var(--theme-primary-rgb), 0.62);
+  --log-dialog-glow: rgba(var(--theme-primary-rgb), 0.26);
+  --log-dialog-panel: rgba(11, 16, 28, 0.76);
+  --log-dialog-panel-strong: rgba(15, 21, 35, 0.92);
+  background:
+    radial-gradient(circle at 16% 10%, rgba(var(--theme-primary-rgb), 0.2), transparent 34%),
+    radial-gradient(circle at 88% 92%, rgba(var(--theme-primary-rgb), 0.14), transparent 32%),
+    linear-gradient(145deg, rgba(16, 20, 32, 0.94), rgba(5, 9, 18, 0.96));
+  border-color: var(--log-dialog-border);
+  box-shadow:
+    0 28px 80px rgba(0, 0, 0, 0.66),
+    0 0 0 1px rgba(var(--theme-primary-rgb), 0.12),
+    0 0 38px var(--log-dialog-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+html.dark .log-detail-dialog .el-dialog::before {
+  background:
+    linear-gradient(90deg, transparent 4%, rgba(var(--theme-primary-rgb), 0.72) 50%, transparent 96%) top / 100% 1px no-repeat,
+    linear-gradient(90deg, transparent 4%, rgba(var(--theme-primary-rgb), 0.5) 50%, transparent 96%) bottom / 100% 1px no-repeat;
+}
+html.dark .log-detail-dialog .el-dialog::after {
+  border-color: rgba(var(--theme-primary-rgb), 0.08);
+}
+html.dark .log-detail-dialog .el-dialog__close {
+  color: rgba(245, 240, 230, 0.78);
+}
+html.dark .log-detail-dialog .el-dialog__headerbtn:hover .el-dialog__close {
+  color: var(--theme-primary, #c5a47e);
+}
+html.dark .log-detail-dialog .dlg-icon {
+  border-color: rgba(var(--theme-primary-rgb), 0.22);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.035), rgba(0, 0, 0, 0.12)),
+    rgba(255, 255, 255, 0.025);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -12px 22px rgba(0, 0, 0, 0.22),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.24),
+    0 1px 0 rgba(255, 255, 255, 0.04),
+    0 12px 22px rgba(0, 0, 0, 0.22);
+}
+html.dark .log-detail-dialog .dlg-icon img {
+  filter: none;
+}
+html.dark .log-detail-dialog .dlg-actor {
+  color: rgba(246, 238, 220, 0.9);
+}
+html.dark .log-detail-dialog .dlg-summary {
+  color: #f7f3ea;
+  text-shadow: 0 0 18px rgba(var(--theme-primary-rgb), 0.14);
+}
+html.dark .log-detail-dialog .dlg-title-wrap::after {
+  color: rgba(244, 238, 226, 0.58);
+}
+html.dark .log-detail-dialog .action-tag {
+  border-color: rgba(var(--theme-primary-rgb), 0.28);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+html.dark .log-detail-dialog .dlg-meta-item {
+  border-color: rgba(var(--theme-primary-rgb), 0.24);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.095), rgba(255, 255, 255, 0.028)),
+    rgba(11, 16, 28, 0.72);
+}
+html.dark .log-detail-dialog .dlg-meta-item + .dlg-meta-item {
+  border-left-color: rgba(var(--theme-primary-rgb), 0.24);
+}
+html.dark .log-detail-dialog .dlg-meta-label,
+html.dark .log-detail-dialog .dlg-section-title,
+html.dark .log-detail-dialog .dlg-ch-arrow {
+  color: var(--theme-primary, #c5a47e);
+}
+html.dark .log-detail-dialog .dlg-meta-label::before {
+  color: var(--theme-primary, #c5a47e);
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  filter: drop-shadow(0 0 8px rgba(var(--theme-primary-rgb), 0.26));
+}
+html.dark .log-detail-dialog .dlg-meta-value {
+  color: #f3efe7;
+}
+html.dark .log-detail-dialog .dlg-section-title {
+  text-shadow: 0 0 12px rgba(var(--theme-primary-rgb), 0.2);
+}
+html.dark .log-detail-dialog .dlg-section-count {
+  color: #fff6df;
+  background: linear-gradient(180deg, rgba(var(--theme-primary-rgb), 0.36), rgba(var(--theme-primary-rgb), 0.18));
+  border-color: rgba(var(--theme-primary-rgb), 0.28);
+}
+html.dark .log-detail-dialog .dlg-changes {
+  border-color: rgba(var(--theme-primary-rgb), 0.16);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.065), rgba(255, 255, 255, 0.018)),
+    rgba(11, 16, 28, 0.62);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.055),
+    inset 0 -18px 36px rgba(0, 0, 0, 0.12),
+    0 12px 30px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(14px) saturate(120%);
+  -webkit-backdrop-filter: blur(14px) saturate(120%);
+}
+html.dark .log-detail-dialog .dlg-change-head {
+  color: rgba(244, 238, 226, 0.58);
+  background:
+    linear-gradient(180deg, rgba(18, 24, 38, 0.72), rgba(12, 17, 28, 0.54));
+  border-bottom-color: rgba(var(--theme-primary-rgb), 0.1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+html.dark .log-detail-dialog .dlg-change-row {
+  border-bottom-color: rgba(255, 255, 255, 0.035);
+}
+html.dark .log-detail-dialog .dlg-change-row:nth-child(odd) {
+  background: rgba(255, 255, 255, 0.022);
+}
+html.dark .log-detail-dialog .dlg-change-row:hover {
+  background: rgba(var(--theme-primary-rgb), 0.045);
+}
+html.dark .log-detail-dialog .dlg-change-label {
+  color: rgba(245, 238, 222, 0.84);
+}
+html.dark .log-detail-dialog .dlg-ch-before {
+  color: #ff9e9e;
+  background: rgba(196, 69, 69, 0.2);
+}
+html.dark .log-detail-dialog .dlg-ch-after {
+  color: #6ee6a4;
+  background: rgba(44, 149, 96, 0.25);
+}
+html.dark .log-detail-dialog .dlg-changes::-webkit-scrollbar-thumb {
+  background: rgba(var(--theme-primary-rgb), 0.58);
+  box-shadow: 0 0 10px rgba(var(--theme-primary-rgb), 0.22);
+}
+html.dark .el-overlay:has(.log-detail-dialog) {
+  background:
+    radial-gradient(circle at 50% 38%, rgba(var(--theme-primary-rgb), 0.12), transparent 34%),
+    rgba(0, 0, 0, 0.76);
+}
+
 @media (max-width: 760px) {
   .log-detail-dialog .el-dialog {
     max-height: calc(100vh - 20px);
@@ -2097,15 +2225,6 @@ html.dark .messages-page .unread-badge {
   .log-detail-dialog .dlg-header {
     align-items: flex-start;
     gap: 16px;
-  }
-  .log-detail-dialog .dlg-icon {
-    width: 58px;
-    height: 58px;
-    border-radius: 14px;
-  }
-  .log-detail-dialog .dlg-icon img {
-    width: 54px;
-    height: 54px;
   }
   .log-detail-dialog .dlg-summary {
     font-size: 18px;
@@ -2203,19 +2322,10 @@ html[data-mode='dark'] .messages-type-select-popper .el-select-dropdown__item.is
   color: var(--theme-primary-deep);
   font-weight: 700;
 }
-</style>
-
-<!-- ============================================================
-     从 main.css 迁移过来的 Messages 页面全局样式（暗色模式覆盖等）
-     说明：scoped 样式无法用 html.dark .xxx 这种祖先选择器命中
-     scoped hash 的元素，因此放在非 scoped 块中。
-     ============================================================ -->
-<style scoped>
 /* ============================================================
    Messages 页面：dark 模式下根容器使用页面底色
    ============================================================ */
 html.dark .messages-page {
-  background: var(--bg-page) !important;
   color: var(--text-primary) !important;
 }
 html.dark .messages-page .form-control input {
@@ -2270,121 +2380,51 @@ html.dark .messages-page .msg-card.unread {
     radial-gradient(circle at 100% 100%, rgba(247, 189, 85, 0.14), transparent 40%),
     linear-gradient(145deg, rgba(49, 39, 28, 0.88), rgba(15, 17, 26, 0.78)) !important;
   border-color: rgba(var(--theme-primary-rgb), 0.68) !important;
-  box-shadow:
+  /* box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.12),
     0 16px 38px rgba(0, 0, 0, 0.44),
-    0 0 32px rgba(var(--theme-primary-rgb), 0.34) !important;
+    0 0 32px rgba(var(--theme-primary-rgb), 0.34) !important; */
 }
-html.dark .messages-page .changes {
+.messages-page .changes {
   background: var(--theme-surface-muted) !important;
   border-left-color: rgba(var(--theme-primary-rgb), 0.6) !important;
 }
-html.dark .messages-page .ch-before {
+.messages-page .ch-before {
   color: #ff8a8a !important;
   background: rgba(245, 108, 108, 0.16) !important;
 }
-html.dark .messages-page .ch-after {
+.messages-page .ch-after {
   color: #6fd49b !important;
   background: rgba(70, 167, 109, 0.18) !important;
 }
 
 /* action-tag：暗色下做反转，色块用半透明带主色，文字用更亮的同色 */
-html.dark .messages-page .action-tag,
-html.dark .log-detail-dialog .action-tag {
+.messages-page .action-tag {
   background: rgba(var(--theme-primary-rgb), 0.18) !important;
   color: var(--theme-primary) !important;
 }
-html.dark .messages-page .tag-asset-create,
-html.dark .log-detail-dialog .tag-asset-create {
+.messages-page .tag-asset-create {
   background: rgba(44, 122, 94, 0.22) !important;
   color: #6fd49b !important;
 }
-html.dark .messages-page .tag-asset-update,
-html.dark .log-detail-dialog .tag-asset-update {
+.messages-page .tag-asset-update {
   background: rgba(176, 138, 82, 0.22) !important;
   color: #e0b974 !important;
 }
-html.dark .messages-page .tag-asset-delete,
-html.dark .messages-page .tag-file-delete,
-html.dark .log-detail-dialog .tag-asset-delete,
-html.dark .log-detail-dialog .tag-file-delete {
+.messages-page .tag-asset-delete,
+.messages-page .tag-file-delete {
   background: rgba(196, 69, 69, 0.22) !important;
   color: #ff8a8a !important;
 }
-html.dark .messages-page .tag-asset-qr-regen,
-html.dark .messages-page .tag-file-upload,
-html.dark .log-detail-dialog .tag-asset-qr-regen,
-html.dark .log-detail-dialog .tag-file-upload {
+.messages-page .tag-asset-qr-regen,
+.messages-page .tag-file-upload {
   background: rgba(79, 143, 216, 0.22) !important;
   color: #7fb6ee !important;
 }
-html.dark .messages-page .tag-login,
-html.dark .messages-page .tag-logout,
-html.dark .log-detail-dialog .tag-login,
-html.dark .log-detail-dialog .tag-logout {
+.messages-page .tag-login,
+.messages-page .tag-logout {
   background: rgba(155, 110, 200, 0.22) !important;
   color: #c9a8e6 !important;
 }
 
-/* ============================================================
-   日志详情弹窗 (.log-detail-dialog) 暗色覆盖
-   弹窗 teleport 到 body，必须用非 scoped 全局规则
-   ============================================================ */
-html.dark .log-detail-dialog .el-dialog {
-  background:
-    radial-gradient(circle at 14% 12%, rgba(var(--theme-primary-rgb), 0.22), transparent 34%),
-    radial-gradient(circle at 100% 100%, rgba(var(--theme-primary-rgb), 0.16), transparent 36%),
-    linear-gradient(145deg, rgba(24, 28, 42, 0.78), rgba(7, 12, 24, 0.84)) !important;
-  border-color: rgba(var(--theme-primary-rgb), 0.64) !important;
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 26px 70px rgba(0, 0, 0, 0.58),
-    0 0 0 1px rgba(var(--theme-primary-rgb), 0.12),
-    0 0 34px rgba(var(--theme-primary-rgb), 0.22) !important;
-  backdrop-filter: blur(22px) saturate(130%) !important;
-  -webkit-backdrop-filter: blur(22px) saturate(130%) !important;
-}
-html.dark .log-detail-dialog .el-dialog__header {
-  background: transparent !important;
-  border-bottom-color: transparent !important;
-}
-html.dark .log-detail-dialog .dlg-actor {
-  color: #d7aa62 !important;
-}
-html.dark .log-detail-dialog .dlg-summary {
-  color: #e9edf7 !important;
-}
-html.dark .log-detail-dialog .dlg-meta-label,
-html.dark .log-detail-dialog .dlg-section-title,
-html.dark .log-detail-dialog .dlg-ch-arrow {
-  color: #d7aa62 !important;
-}
-html.dark .log-detail-dialog .dlg-meta-value {
-  color: #dfe4ef !important;
-}
-html.dark .log-detail-dialog .dlg-meta-row,
-html.dark .log-detail-dialog .dlg-empty {
-  background: rgba(12, 18, 31, 0.58) !important;
-  border-color: rgba(var(--theme-primary-rgb), 0.34) !important;
-}
-html.dark .log-detail-dialog .dlg-change-row {
-  background: transparent !important;
-}
-html.dark .log-detail-dialog .dlg-change-row:hover {
-  background: rgba(var(--theme-primary-rgb), 0.06) !important;
-}
-html.dark .log-detail-dialog .dlg-ch-before {
-  color: #f3a0a0 !important;
-  background: rgba(196, 69, 69, 0.22) !important;
-}
-html.dark .log-detail-dialog .dlg-ch-after {
-  color: #6fd49b !important;
-  background: rgba(44, 122, 94, 0.24) !important;
-}
-html.dark .log-detail-dialog .meta,
-html.dark .log-detail-dialog .json {
-  background: var(--theme-surface) !important;
-  color: var(--text-primary) !important;
-}
 </style>

@@ -1552,11 +1552,16 @@ html.dark .svg-icon-btn.qr:hover svg { fill: #f0f0f0; }
 .asset-edit-dialog :deep(.el-input__wrapper),
 .asset-edit-dialog :deep(.el-textarea__inner) {
   min-height: 38px;
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px var(--theme-input-border, #e6d9bf) inset;
+  transition: box-shadow 0.2s ease;
+  background: #ffffff;
 }
 .asset-edit-dialog :deep(.el-input__inner) {
   height: 36px;
   line-height: 36px;
-  font-size: 14px;
+  color: #1a1a1a;
+  font-size: 13px;
 }
 .asset-edit-dialog :deep(.el-input__inner)::placeholder,
 .asset-edit-dialog :deep(.el-textarea__inner)::placeholder {
@@ -1603,18 +1608,7 @@ html.dark .svg-icon-btn.qr:hover svg { fill: #f0f0f0; }
   paint-order: stroke fill;
 }
 
-/* ===== 输入框统一观感（圆角 + 金色边框） ===== */
-.asset-edit-dialog :deep(.el-input__wrapper),
-.asset-edit-dialog :deep(.el-textarea__inner) {
-  border-radius: 8px;
-  box-shadow: 0 0 0 1px var(--theme-input-border, #e6d9bf) inset;
-  transition: box-shadow 0.2s ease;
-  background: #ffffff;
-}
-.asset-edit-dialog :deep(.el-input__inner) {
-  color: #1a1a1a;
-  font-size: 13px;
-}
+/* ===== 输入框统一交互（圆角 + 金色边框） ===== */
 .asset-edit-dialog :deep(.el-input__wrapper:hover),
 .asset-edit-dialog :deep(.el-textarea__inner:hover) {
   box-shadow: 0 0 0 1px var(--theme-primary-light-3, #d4b89a) inset;
@@ -2042,10 +2036,6 @@ html.dark .svg-icon-btn.qr:hover svg { fill: #f0f0f0; }
 .files-empty svg {
   color: var(--theme-primary-light-3, #d4b89a);
 }
-
-</style>
-
-<style>
 html.dark .assets-table {
   color: var(--text-primary);
 }
@@ -2053,7 +2043,7 @@ html.dark .assets-table .filter-bar,
 html.dark .assets-table .filter-row,
 html.dark .assets-table .table-card,
 html.dark .assets-table .table-card.el-card,
-html.dark .assets-table .table-card .el-card__body {
+html.dark .assets-table .table-card :deep(.el-card__body) {
   background: transparent !important;
 }
 html.dark .assets-table .form-control input {
@@ -2096,61 +2086,60 @@ html.dark .assets-table .class-badge[data-class="VE"] {
 html.dark .assets-table .gold-table {
   border-color: var(--theme-border) !important;
 }
-html.dark .assets-table .gold-table .gold-header-cell,
-html.dark .assets-table .gold-table .el-table__fixed-header-wrapper th.gold-header-cell,
-html.dark .assets-table .gold-table .el-table__fixed-right .gold-header-cell,
-html.dark .assets-table .gold-table .el-table__fixed .gold-header-cell {
+html.dark .assets-table .gold-table :deep(.gold-header-cell),
+html.dark .assets-table .gold-table :deep(.el-table__fixed-header-wrapper th.gold-header-cell),
+html.dark .assets-table .gold-table :deep(.el-table__fixed-right .gold-header-cell),
+html.dark .assets-table .gold-table :deep(.el-table__fixed .gold-header-cell) {
   background-color: var(--theme-surface-subtle) !important;
   color: var(--theme-primary) !important;
   border-bottom-color: rgba(var(--theme-primary-rgb), 0.4) !important;
 }
-html.dark .assets-table .gold-table .gold-header-cell .cell {
+html.dark .assets-table .gold-table :deep(.gold-header-cell .cell) {
   color: var(--theme-primary) !important;
 }
-html.dark .assets-table .gold-table .el-table__row td {
+html.dark .assets-table .gold-table :deep(.el-table__row td) {
   border-bottom-color: var(--theme-table-line) !important;
 }
 html.dark .assets-table .gold-table,
-html.dark .assets-table .gold-table .el-table__inner-wrapper,
-html.dark .assets-table .gold-table .el-table__header-wrapper,
-html.dark .assets-table .gold-table .el-table__body-wrapper,
-html.dark .assets-table .gold-table .el-scrollbar,
-html.dark .assets-table .gold-table .el-scrollbar__view {
-  --asset-table-hover-bg: var(--theme-surface-muted);
+html.dark .assets-table .gold-table :deep(.el-table__inner-wrapper),
+html.dark .assets-table .gold-table :deep(.el-table__header-wrapper),
+html.dark .assets-table .gold-table :deep(.el-table__body-wrapper),
+html.dark .assets-table .gold-table :deep(.el-scrollbar),
+html.dark .assets-table .gold-table :deep(.el-scrollbar__view) {
   --asset-table-hover-bg: color-mix(in srgb, var(--bg-page) 84%, rgb(var(--theme-primary-rgb)) 16%);
   background: var(--bg-page) !important;
 }
-html.dark .assets-table .gold-table .el-table__header-wrapper thead tr,
-html.dark .assets-table .gold-table tr,
-html.dark .assets-table .gold-table th.el-table__cell,
-html.dark .assets-table .gold-table td.el-table__cell,
-html.dark .assets-table .gold-table.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
-  background: var(--bg-page) !important;
+html.dark .assets-table .gold-table :deep(.el-table__header-wrapper thead tr),
+html.dark .assets-table .gold-table :deep(tr),
+html.dark .assets-table .gold-table :deep(th.el-table__cell),
+html.dark .assets-table .gold-table :deep(td.el-table__cell),
+html.dark .assets-table .gold-table.el-table--striped :deep(.el-table__body tr.el-table__row--striped td.el-table__cell) {
   background-color: var(--bg-page) !important;
 }
-html.dark .assets-table .gold-table .el-table__body tr:hover > td.el-table__cell {
-  background: var(--asset-table-hover-bg) !important;
+html.dark .assets-table .gold-table :deep(.el-table__body tr:hover > td.el-table__cell) {
   background-color: var(--asset-table-hover-bg) !important;
 }
-html.dark .assets-table .gold-table td.el-table-fixed-column--left,
-html.dark .assets-table .gold-table td.el-table-fixed-column--right,
-html.dark .assets-table .gold-table .el-table__fixed td.el-table__cell,
-html.dark .assets-table .gold-table .el-table__fixed-right td.el-table__cell {
-  background: var(--bg-page) !important;
+html.dark .assets-table .gold-table :deep(td.el-table-fixed-column--left),
+html.dark .assets-table .gold-table :deep(td.el-table-fixed-column--right),
+html.dark .assets-table .gold-table :deep(.el-table__fixed td.el-table__cell),
+html.dark .assets-table .gold-table :deep(.el-table__fixed-right td.el-table__cell) {
   background-color: var(--bg-page) !important;
 }
-html.dark .assets-table .gold-table tbody tr:hover > td.el-table-fixed-column--left,
-html.dark .assets-table .gold-table tbody tr:hover > td.el-table-fixed-column--right,
-html.dark .assets-table .gold-table .el-table__fixed tbody tr:hover > td.el-table__cell,
-html.dark .assets-table .gold-table .el-table__fixed-right tbody tr:hover > td.el-table__cell {
-  background: var(--asset-table-hover-bg) !important;
+html.dark .assets-table .gold-table :deep(tbody tr:hover > td.el-table-fixed-column--left),
+html.dark .assets-table .gold-table :deep(tbody tr:hover > td.el-table-fixed-column--right),
+html.dark .assets-table .gold-table :deep(.el-table__fixed tbody tr:hover > td.el-table__cell),
+html.dark .assets-table .gold-table :deep(.el-table__fixed-right tbody tr:hover > td.el-table__cell) {
   background-color: var(--asset-table-hover-bg) !important;
 }
-html.dark .assets-table .gold-table td.el-table-fixed-column--left::before,
-html.dark .assets-table .gold-table td.el-table-fixed-column--right::before {
+html.dark .assets-table .gold-table :deep(td.el-table-fixed-column--left::before),
+html.dark .assets-table .gold-table :deep(td.el-table-fixed-column--right::before) {
   background: transparent !important;
   pointer-events: none;
 }
+
+</style>
+
+<style>
 html.dark .asset-edit-dialog .el-dialog {
   background: var(--bg-card) !important;
   border-color: var(--theme-border) !important;
