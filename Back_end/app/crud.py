@@ -1,10 +1,11 @@
 """资产 CRUD 操作。"""
+import re
 import secrets
 from datetime import datetime
 from typing import Optional, Tuple
 
 from fastapi import HTTPException
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from . import asset_code as code_util
@@ -12,8 +13,32 @@ from . import models, schemas
 from .config import get_settings
 
 
+_SUPPLY_SERIAL_RE = re.compile(r"^WZ-(\d{4})-(\d{6})$")
+
+
 def _new_public_token() -> str:
     return secrets.token_urlsafe(16)
+
+
+def next_supply_serial(db: Session) -> str:
+    year = datetime.now().year
+    prefix = f"WZ-{year}-"
+    rows = db.execute(
+        select(models.SupplyRecord.serial_number).where(
+            models.SupplyRecord.serial_number.like(f"{prefix}%")
+        )
+    ).scalars()
+
+    max_seq = 0
+    for value in rows:
+        match = _SUPPLY_SERIAL_RE.match(value or "")
+        if not match:
+            continue
+        code_year = int(match.group(1))
+        if code_year != year:
+            continue
+        max_seq = max(max_seq, int(match.group(2)))
+    return f"{prefix}{max_seq + 1:06d}"
 
 
 def list_assets(
@@ -204,5 +229,81 @@ def create_asset_file(
 
 
 def delete_asset_file(db: Session, record: models.AssetFile) -> None:
+    db.delete(record)
+    db.commit()
+
+
+def list_supplies(
+    db: Session,
+    page: int = 1,
+    page_size: int = 10,
+    keyword: Optional[str] = None,
+) -> Tuple[int, list[models.SupplyRecord]]:
+    stmt = select(models.SupplyRecord)
+    if keyword:
+        like = f"%{keyword}%"
+        stmt = stmt.where(
+            or_(
+                models.SupplyRecord.receiver.like(like),
+                models.SupplyRecord.item_name.like(like),
+                models.SupplyRecord.serial_number.like(like),
+            )
+        )
+
+    total = db.execute(
+        select(func.count()).select_from(stmt.subquery())
+    ).scalar_one()
+    page_stmt = (
+        stmt.order_by(models.SupplyRecord.id.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    )
+    items = db.execute(page_stmt).scalars().all()
+    return int(total), list(items)
+
+
+def get_supply(db: Session, supply_id: int) -> Optional[models.SupplyRecord]:
+    return db.get(models.SupplyRecord, supply_id)
+
+
+def get_supply_by_serial(
+    db: Session, serial_number: str
+) -> Optional[models.SupplyRecord]:
+    if not serial_number:
+        return None
+    return db.execute(
+        select(models.SupplyRecord).where(
+            models.SupplyRecord.serial_number == serial_number
+        )
+    ).scalar_one_or_none()
+
+
+def create_supply(
+    db: Session, payload: schemas.SupplyCreate
+) -> models.SupplyRecord:
+    data = payload.model_dump()
+    data["serial_number"] = next_supply_serial(db)
+    record = models.SupplyRecord(**data)
+    db.add(record)
+    db.commit()
+    db.refresh(record)
+    return record
+
+
+def update_supply(
+    db: Session,
+    record: models.SupplyRecord,
+    payload: schemas.SupplyUpdate,
+) -> models.SupplyRecord:
+    data = payload.model_dump(exclude_unset=True)
+    data.pop("serial_number", None)
+    for key, value in data.items():
+        setattr(record, key, value)
+    db.commit()
+    db.refresh(record)
+    return record
+
+
+def delete_supply(db: Session, record: models.SupplyRecord) -> None:
     db.delete(record)
     db.commit()

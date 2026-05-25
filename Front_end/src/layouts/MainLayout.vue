@@ -85,7 +85,7 @@
           <template #dropdown>
             <el-dropdown-menu class="theme-dropdown-menu">
               <el-dropdown-item
-                v-for="theme in themes"
+                v-for="theme in availableThemes"
                 :key="theme.key"
                 :command="theme.key"
                 :title="theme.label"
@@ -139,7 +139,15 @@ import { toast } from '../utils/toast'
 import { getUser, clearAuth } from '../utils/auth'
 import { logout as apiLogout } from '../api/auth'
 import { getUnreadCount } from '../api/logs'
-import { getStoredTheme, saveTheme, themes, getStoredMode, toggleMode } from '../utils/theme'
+import {
+  getStoredTheme,
+  saveTheme,
+  themes,
+  getStoredMode,
+  toggleMode,
+  getThemesByMode,
+  normalizeThemeForMode,
+} from '../utils/theme'
 import brandImgLight from '../img/name.png'
 import brandImgDark from '../img/name_white.png'
 
@@ -148,18 +156,22 @@ const route = useRoute()
 
 const user = ref(getUser())
 const unreadCount = ref(0)
-const currentTheme = ref(getStoredTheme())
 const currentMode = ref(getStoredMode())
+const currentTheme = ref(normalizeThemeForMode(getStoredTheme(), currentMode.value))
 
 const tabs = [
   { key: 'assets', label: '资产表', path: '/dashboard' },
+  { key: 'supplies', label: '物资表', path: '/supplies' },
   { key: 'overview', label: '总览', path: '/overview' },
   { key: 'message', label: '日志', path: '/messages' },
 ]
 
 const currentPath = computed(() => route.path)
+const availableThemes = computed(() => getThemesByMode(currentMode.value))
 const currentThemeConfig = computed(() => (
-  themes.find((theme) => theme.key === currentTheme.value) || themes[0]
+  availableThemes.value.find((theme) => theme.key === currentTheme.value)
+  || availableThemes.value[0]
+  || themes[0]
 ))
 const brandImg = computed(() => (
   currentMode.value === 'dark' ? brandImgDark : brandImgLight
@@ -186,6 +198,19 @@ function onThemeCommand(theme) {
   currentTheme.value = saveTheme(theme)
 }
 
+function syncThemeForMode(mode) {
+  const nextTheme = normalizeThemeForMode(currentTheme.value, mode)
+  if (nextTheme !== currentTheme.value) {
+    currentTheme.value = saveTheme(nextTheme)
+  }
+}
+
+function applyModeToggle() {
+  const nextMode = toggleMode(currentMode.value)
+  currentMode.value = nextMode
+  syncThemeForMode(nextMode)
+}
+
 let modeToggleLock = false
 
 async function onModeToggle(e) {
@@ -200,13 +225,13 @@ async function onModeToggle(e) {
   const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
   if (!document.startViewTransition || reducedMotion) {
-    currentMode.value = toggleMode(currentMode.value)
+    applyModeToggle()
     modeToggleLock = false
     return
   }
 
   const transition = document.startViewTransition(async () => {
-    currentMode.value = toggleMode(currentMode.value)
+    applyModeToggle()
     await nextTick()
   })
 

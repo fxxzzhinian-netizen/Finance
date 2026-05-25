@@ -142,6 +142,35 @@ class AssetFile(Base):
     )
 
 
+class SupplyRecord(Base):
+    """物资领取记录。"""
+
+    __tablename__ = "supplies"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    receiver: Mapped[str] = mapped_column(
+        String(64), index=True, comment="领取人"
+    )
+    item_name: Mapped[str] = mapped_column(
+        String(128), index=True, comment="物品名称"
+    )
+    quantity: Mapped[int] = mapped_column(
+        Integer, default=1, comment="领取数量"
+    )
+    serial_number: Mapped[str] = mapped_column(
+        String(64), index=True, comment="序列号"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), comment="创建时间"
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        server_default=func.now(),
+        onupdate=func.now(),
+        comment="更新时间",
+    )
+
+
 class ActivityLog(Base):
     """系统操作日志（消息中心数据源）。
 

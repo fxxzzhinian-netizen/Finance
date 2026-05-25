@@ -96,6 +96,57 @@ class AssetListOut(BaseModel):
     items: List[AssetOut]
 
 
+class SupplyBase(BaseModel):
+    receiver: str = Field(..., min_length=1, max_length=64, description="领取人")
+    item_name: str = Field(..., min_length=1, max_length=128, description="物品名称")
+    quantity: int = Field(1, ge=1, le=999999, description="领取数量")
+
+
+class SupplyCreate(SupplyBase):
+    pass
+
+
+class SupplyUpdate(BaseModel):
+    receiver: Optional[str] = Field(default=None, min_length=1, max_length=64)
+    item_name: Optional[str] = Field(default=None, min_length=1, max_length=128)
+    quantity: Optional[int] = Field(default=None, ge=1, le=999999)
+
+
+class SupplyOut(SupplyBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    serial_number: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class SupplyListOut(BaseModel):
+    total: int
+    items: List[SupplyOut]
+
+
+class SupplyNextSerialOut(BaseModel):
+    serial_number: str
+
+
+class SupplyQrInfoOut(BaseModel):
+    serial_number: str
+    qr_url: str = Field(..., description="二维码包含的目标 URL（前端展示页）")
+    image_url: str = Field(..., description="二维码 PNG 接口路径")
+
+
+class PublicSupplyOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    serial_number: str
+    receiver: str
+    item_name: str
+    quantity: int
+    created_at: datetime
+    updated_at: datetime
+
+
 class AssetClassDictItem(BaseModel):
     code: str
     name: str

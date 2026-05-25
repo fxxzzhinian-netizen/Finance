@@ -139,6 +139,60 @@ html[data-theme='green'] {
   --theme-placeholder: #92b49e;
 }
 
+html[data-theme='black'] {
+  --theme-primary: #111111;
+  --theme-primary-deep: #000000;
+  --theme-primary-light: #e5e7eb;
+  --theme-primary-light-3: #4b5563;
+  --theme-primary-light-5: #9ca3af;
+  --theme-primary-light-7: #d1d5db;
+  --theme-primary-light-8: #e5e7eb;
+  --theme-primary-light-9: #f3f4f6;
+  --theme-primary-dark-2: #000000;
+  --theme-primary-rgb: 17, 17, 17;
+  --theme-primary-deep-rgb: 0, 0, 0;
+  --theme-surface: #f4f5f7;
+  --theme-surface-hover: #eceff3;
+  --theme-surface-strong: #e5e7eb;
+  --theme-surface-subtle: #ffffff;
+  --theme-surface-muted: #f7f7f8;
+  --theme-border: #d8dce2;
+  --theme-border-strong: #6b7280;
+  --theme-input-border: #c8cdd5;
+  --theme-table-line: #eceff3;
+  --theme-text-strong: #111827;
+  --theme-text-hover: #000000;
+  --theme-text-muted: #6b7280;
+  --theme-placeholder: #9ca3af;
+}
+
+html[data-theme='white'] {
+  --theme-primary: #ffffff;
+  --theme-primary-deep: #f5f7fb;
+  --theme-primary-light: #ffffff;
+  --theme-primary-light-3: #f5f7fb;
+  --theme-primary-light-5: #edf0f5;
+  --theme-primary-light-7: #e4e8ef;
+  --theme-primary-light-8: #d9dee8;
+  --theme-primary-light-9: #cfd6e1;
+  --theme-primary-dark-2: #dfe5ee;
+  --theme-primary-rgb: 255, 255, 255;
+  --theme-primary-deep-rgb: 245, 247, 251;
+  --theme-surface: #ffffff;
+  --theme-surface-hover: #f5f7fb;
+  --theme-surface-strong: #edf0f5;
+  --theme-surface-subtle: #ffffff;
+  --theme-surface-muted: #f7f8fb;
+  --theme-border: #e0e4ec;
+  --theme-border-strong: #cfd6e1;
+  --theme-input-border: #d9dee8;
+  --theme-table-line: #edf0f5;
+  --theme-text-strong: #111827;
+  --theme-text-hover: #000000;
+  --theme-text-muted: #6b7280;
+  --theme-placeholder: #9ca3af;
+}
+
 /* ============================================================
    暗色模式（黑夜）：覆写自定义变量 + Element Plus 变量
    ============================================================ */
@@ -523,6 +577,10 @@ html.dark .el-button--primary:hover {
   background: var(--theme-primary-deep) !important;
   border-color: var(--theme-primary-deep) !important;
   color: #fff !important;
+}
+html.dark[data-theme='white'] .el-button--primary,
+html.dark[data-theme='white'] .el-button--primary:hover {
+  color: #111827 !important;
 }
 html.dark .el-select-dropdown__item.hover,
 html.dark .el-select-dropdown__item:hover {

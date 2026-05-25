@@ -17,6 +17,12 @@ const routes = [
     meta: { public: true, title: '资产信息' },
   },
   {
+    path: '/p/supply/:serialNumber',
+    name: 'PublicSupply',
+    component: () => import('../views/PublicSupply.vue'),
+    meta: { public: true, title: '物资信息' },
+  },
+  {
     path: '/',
     component: Layout,
     redirect: '/dashboard',
@@ -30,6 +36,12 @@ const routes = [
       {
         path: 'assets',
         redirect: '/dashboard',
+      },
+      {
+        path: 'supplies',
+        name: 'Supplies',
+        component: () => import('../views/Supplies.vue'),
+        meta: { title: '物资表' },
       },
       {
         path: 'overview',

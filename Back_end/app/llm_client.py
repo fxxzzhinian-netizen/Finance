@@ -196,7 +196,7 @@ ASSET_SEARCH_FIELDS = {
 
 LOG_SEARCH_FIELDS = {
     "keyword": "模糊搜索关键词（匹配摘要/对象/操作人）",
-    "action": "动作类型筛选，只能是：asset.create/asset.update/asset.delete/asset.import/asset.qr.regen/file.upload/file.delete/login/logout",
+    "action": "动作类型筛选，只能是：asset.create/asset.update/asset.delete/asset.import/asset.qr.regen/supply.create/supply.update/supply.delete/file.upload/file.delete/login/logout",
     "scope": "范围，只能是：all（全部）或 mine（仅我的）",
 }
 

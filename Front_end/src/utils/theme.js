@@ -5,6 +5,8 @@ export const themes = [
   { key: 'gold', label: '金色', color: '#c5a47e' },
   { key: 'blue', label: '蓝色', color: '#4f8fd8' },
   { key: 'green', label: '绿色', color: '#46a76d' },
+  { key: 'black', label: '黑色', color: '#111111', modes: ['light'] },
+  { key: 'white', label: '白色', color: '#ffffff', modes: ['dark'] },
 ]
 
 export const modes = ['light', 'dark']
@@ -18,6 +20,22 @@ export function normalizeTheme(theme) {
 
 export function normalizeMode(mode) {
   return modeSet.has(mode) ? mode : 'light'
+}
+
+export function getThemesByMode(mode) {
+  const nextMode = normalizeMode(mode)
+  return themes.filter((theme) => !theme.modes || theme.modes.includes(nextMode))
+}
+
+export function normalizeThemeForMode(theme, mode) {
+  const nextMode = normalizeMode(mode)
+  const nextTheme = normalizeTheme(theme)
+  if (getThemesByMode(nextMode).some((item) => item.key === nextTheme)) {
+    return nextTheme
+  }
+  if (nextTheme === 'black' && nextMode === 'dark') return 'white'
+  if (nextTheme === 'white' && nextMode === 'light') return 'black'
+  return 'gold'
 }
 
 export function applyTheme(theme) {
@@ -86,6 +104,6 @@ export function toggleMode(currentMode) {
 }
 
 export function initTheme() {
-  applyMode(getStoredMode())
-  return applyTheme(getStoredTheme())
+  const mode = applyMode(getStoredMode())
+  return applyTheme(normalizeThemeForMode(getStoredTheme(), mode))
 }

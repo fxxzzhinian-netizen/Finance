@@ -174,7 +174,7 @@
           />
         </svg>
         <div class="empty-title">暂无日志</div>
-        <div class="empty-sub">所有的资产新增、修改、删除等操作都会同步记录在这里</div>
+        <div class="empty-sub">资产与物资的新增、修改、删除等操作都会同步记录在这里</div>
       </div>
 
       <!-- 骨架/Loading -->
@@ -286,6 +286,9 @@ import imgFileUpload from '../img/上传文件.png'
 import imgFileDelete from '../img/删除文件.png'
 import imgLogin from '../img/登入.png'
 import imgLogout from '../img/登出.png'
+import imgSupplyCreate from '../img/新增物资.png'
+import imgSupplyUpdate from '../img/修改物资.png'
+import imgSupplyDelete from '../img/删除物资.png'
 
 const ACTION_IMAGE_MAP = {
   'asset.create': imgAssetCreate,
@@ -297,6 +300,9 @@ const ACTION_IMAGE_MAP = {
   'file.delete': imgFileDelete,
   login: imgLogin,
   logout: imgLogout,
+  'supply.create': imgSupplyCreate,
+  'supply.update': imgSupplyUpdate,
+  'supply.delete': imgSupplyDelete,
 }
 
 function actionImage(a) {
@@ -320,6 +326,9 @@ const actionOptions = [
   { value: 'asset.create', label: '新增资产' },
   { value: 'asset.update', label: '修改资产' },
   { value: 'asset.delete', label: '删除资产' },
+  { value: 'supply.create', label: '新增物资' },
+  { value: 'supply.update', label: '修改物资' },
+  { value: 'supply.delete', label: '删除物资' },
   { value: 'asset.import', label: '批量导入' },
   { value: 'asset.qr.regen', label: '二维码刷新' },
   { value: 'file.upload', label: '上传附件' },
@@ -423,6 +432,21 @@ const ACTION_ICON_MAP = {
         '<circle cx="5" cy="5" r="5.2" fill="#fff"/>' +
         '<path stroke="#c44545" stroke-width="1.6" stroke-linecap="round" d="M3 3l4 4M7 3l-4 4"/>' +
       '</g>' +
+    '</svg>',
+  'supply.create':
+    '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">' +
+      '<path fill="currentColor" d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5v-9zm8 1.64L16.66 6.5 12 3.86 7.34 6.5 12 9.14zm-6 6.19 5 2.81v-7.27L6 8.06v7.27zm12 0V8.06l-5 2.81v7.27l5-2.81z"/>' +
+      '<path fill="#2c7a5e" d="M18 14.5a.8.8 0 0 1 .8.8V17h1.7a.8.8 0 0 1 0 1.6h-1.7v1.7a.8.8 0 0 1-1.6 0v-1.7h-1.7a.8.8 0 0 1 0-1.6h1.7v-1.7a.8.8 0 0 1 .8-.8z"/>' +
+    '</svg>',
+  'supply.update':
+    '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">' +
+      '<path fill="currentColor" d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5v-9zm8 1.64L16.66 6.5 12 3.86 7.34 6.5 12 9.14zm-6 6.19 5 2.81v-7.27L6 8.06v7.27zm12-1.74V8.06l-5 2.81v7.27l1.58-.89L18 13.59z"/>' +
+      '<path fill="#b08a52" d="m15.1 19.7.35-1.45 3.7-3.7a.9.9 0 0 1 1.27 0l.53.53a.9.9 0 0 1 0 1.27l-3.7 3.7-1.45.35a.58.58 0 0 1-.7-.7z"/>' +
+    '</svg>',
+  'supply.delete':
+    '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">' +
+      '<path fill="currentColor" d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5v-9zm8 1.64L16.66 6.5 12 3.86 7.34 6.5 12 9.14zm-6 6.19 5 2.81v-7.27L6 8.06v7.27zm12 0V8.06l-5 2.81v7.27l5-2.81z" opacity="0.55"/>' +
+      '<path stroke="#c44545" stroke-width="1.7" stroke-linecap="round" d="m16 16 4 4M20 16l-4 4"/>' +
     '</svg>',
   // 批量导入：纸箱 + 向下箭头角标（表示从外部一次导入很多）
   'asset.import':
@@ -1167,6 +1191,9 @@ watch(scope, () => {
 .tag-asset-update { background: #fff3d9; color: #b08a52; }
 .tag-asset-delete { background: #fde4e4; color: #c44545; }
 .tag-asset-qr-regen { background: #e6f0fb; color: #1f5fa8; }
+.tag-supply-create { background: #e1f3e8; color: #2c7a5e; }
+.tag-supply-update { background: #fff3d9; color: #b08a52; }
+.tag-supply-delete { background: #fde4e4; color: #c44545; }
 .tag-file-upload { background: #e6f0fb; color: #1f5fa8; }
 .tag-file-delete { background: #fde4e4; color: #c44545; }
 .tag-login { background: #f0e7f7; color: #6b3a8a; }
@@ -1365,6 +1392,9 @@ watch(scope, () => {
 .log-detail-dialog .tag-asset-update { background: #fff3d9; color: #b08a52; }
 .log-detail-dialog .tag-asset-delete { background: #fde4e4; color: #c44545; }
 .log-detail-dialog .tag-asset-qr-regen { background: #e6f0fb; color: #1f5fa8; }
+.log-detail-dialog .tag-supply-create { background: #e1f3e8; color: #2c7a5e; }
+.log-detail-dialog .tag-supply-update { background: #fff3d9; color: #b08a52; }
+.log-detail-dialog .tag-supply-delete { background: #fde4e4; color: #c44545; }
 .log-detail-dialog .tag-file-upload { background: #e6f0fb; color: #1f5fa8; }
 .log-detail-dialog .tag-file-delete { background: #fde4e4; color: #c44545; }
 .log-detail-dialog .tag-login { background: #f0e7f7; color: #6b3a8a; }

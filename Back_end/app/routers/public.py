@@ -18,3 +18,15 @@ def get_public_asset(token: str, db: Session = Depends(get_db)):
     if not asset:
         raise HTTPException(status_code=404, detail="资产不存在或链接已失效")
     return asset
+
+
+@router.get(
+    "/supplies/{serial_number}",
+    response_model=schemas.PublicSupplyOut,
+    summary="按序列号获取物资记录公开字段（无需登录）",
+)
+def get_public_supply(serial_number: str, db: Session = Depends(get_db)):
+    record = crud.get_supply_by_serial(db, serial_number)
+    if not record:
+        raise HTTPException(status_code=404, detail="物资记录不存在或链接已失效")
+    return record

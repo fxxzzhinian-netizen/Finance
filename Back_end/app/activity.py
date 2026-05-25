@@ -39,6 +39,14 @@ ASSET_FIELD_LABELS: dict[str, str] = {
 }
 
 
+SUPPLY_FIELD_LABELS: dict[str, str] = {
+    "receiver": "领取人",
+    "item_name": "物品名称",
+    "quantity": "数量",
+    "serial_number": "序列号",
+}
+
+
 # 动作代码 -> 中文名（用于摘要兜底）
 ACTION_LABELS: dict[str, str] = {
     "login": "登录系统",
@@ -48,6 +56,9 @@ ACTION_LABELS: dict[str, str] = {
     "asset.delete": "删除资产",
     "asset.import": "批量导入资产",
     "asset.qr.regen": "刷新二维码",
+    "supply.create": "新增物资记录",
+    "supply.update": "修改物资记录",
+    "supply.delete": "删除物资记录",
     "file.upload": "上传附件",
     "file.delete": "删除附件",
 }
@@ -106,8 +117,40 @@ def diff_asset(
     return changes
 
 
+def _diff_by_labels(
+    labels: dict[str, str],
+    before: dict[str, Any],
+    after: dict[str, Any],
+) -> list[dict[str, Optional[str]]]:
+    changes: list[dict[str, Optional[str]]] = []
+    for field, label in labels.items():
+        b = before.get(field)
+        a = after.get(field)
+        if b == a:
+            continue
+        changes.append(
+            {
+                "field": field,
+                "label": label,
+                "before": _to_display(b),
+                "after": _to_display(a),
+            }
+        )
+    return changes
+
+
+def diff_supply(
+    before: dict[str, Any], after: dict[str, Any]
+) -> list[dict[str, Optional[str]]]:
+    return _diff_by_labels(SUPPLY_FIELD_LABELS, before, after)
+
+
 def asset_to_dict(asset: models.Asset) -> dict[str, Any]:
     return {f: getattr(asset, f, None) for f in ASSET_FIELD_LABELS}
+
+
+def supply_to_dict(record: models.SupplyRecord) -> dict[str, Any]:
+    return {f: getattr(record, f, None) for f in SUPPLY_FIELD_LABELS}
 
 
 def log(
@@ -253,6 +296,43 @@ def list_logs(
 
     unread = unread_count(db, current_user) if current_user else 0
     return total, unread, items
+
+
+def list_target_logs(
+    db: Session,
+    *,
+    target_type: str,
+    page_size: int = 10,
+    current_user: Optional[models.User] = None,
+) -> tuple[int, int, list[dict[str, Any]]]:
+    stmt = select(models.ActivityLog).where(
+        models.ActivityLog.target_type == target_type
+    )
+    total = db.execute(
+        select(func.count()).select_from(stmt.subquery())
+    ).scalar_one()
+    rows = list(
+        db.execute(
+            stmt.order_by(models.ActivityLog.id.desc()).limit(page_size)
+        ).scalars().all()
+    )
+
+    read_ids: set[int] = set()
+    if current_user and rows:
+        ids = [r.id for r in rows]
+        read_ids = set(
+            db.execute(
+                select(models.ActivityLogRead.log_id).where(
+                    and_(
+                        models.ActivityLogRead.username == current_user.username,
+                        models.ActivityLogRead.log_id.in_(ids),
+                    )
+                )
+            ).scalars()
+        )
+
+    unread = unread_count(db, current_user) if current_user else 0
+    return int(total), unread, [_serialize(r, read_ids=read_ids) for r in rows]
 
 
 def unread_count(db: Session, current_user: Optional[models.User]) -> int:
