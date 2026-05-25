@@ -109,6 +109,23 @@ chmod +x deploy.sh
 
 数据库数据持久化在 `./mysql_data/` 目录，删除该目录会清空所有数据。
 
+### 更新部署（前后端同时重建）
+
+如果某次提交同时修改了后端和前端（例如后端新增/变更了 API 字段，前端依赖这些字段），**必须同时重建两个容器**，否则会出现数据不一致。
+
+```bash
+cd ~/asset
+git pull
+docker compose up -d --build --force-recreate backend frontend
+```
+
+> **注意**：`./deploy.sh update` 默认也会重建全部服务。如果只想重建单个容器（例如只改了前端），可以：
+>
+> ```bash
+> docker compose up -d --build frontend    # 只重建前端
+> docker compose up -d --build backend     # 只重建后端
+> ```
+
 ### 国内服务器无法访问 GitHub 时的镜像加速
 
 国内云服务器（腾讯云 / 阿里云等）`git pull` 经常出现：

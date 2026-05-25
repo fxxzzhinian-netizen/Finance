@@ -1,0 +1,3 @@
+dailfinance.top {
+    reverse_proxy frontend:80
+}
